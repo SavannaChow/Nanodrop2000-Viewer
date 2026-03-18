@@ -16,6 +16,10 @@ final class ViewerViewModel: ObservableObject {
     @Published var exportMessage: String?
     @Published var isLoading = false
     @Published var isShowingInfo = false
+    @Published var selectedReferenceIDs: Set<String> = []
+    @Published var referenceNormalizationMode: ReferenceNormalizationMode = .peakNormalize
+
+    let availableReferenceSpectra: [ReferenceSpectrum] = ReferenceSpectrumLibrary.loadBundledSpectra()
 
     var measurements: [TBWKCore.Measurement] {
         worksheet?.measurements ?? []
@@ -40,6 +44,10 @@ final class ViewerViewModel: ObservableObject {
 
     var displayedFileName: String {
         fileURL?.lastPathComponent ?? "No file selected"
+    }
+
+    var selectedReferenceSpectra: [ReferenceSpectrum] {
+        availableReferenceSpectra.filter { selectedReferenceIDs.contains($0.id) }
     }
 
     func importFile() {
@@ -146,6 +154,14 @@ final class ViewerViewModel: ObservableObject {
         }
 
         return orderedItems
+    }
+
+    func toggleReferenceSpectrum(id: String) {
+        if selectedReferenceIDs.contains(id) {
+            selectedReferenceIDs.remove(id)
+        } else {
+            selectedReferenceIDs.insert(id)
+        }
     }
 
     private func exportDirectory(for fileURL: URL) throws -> URL {

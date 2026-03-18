@@ -569,7 +569,7 @@ public enum TBWKExporter {
     }
 
     private static func writeSpectraPDF(for worksheet: Worksheet, to url: URL) throws {
-        var mediaBox = CGRect(x: 0, y: 0, width: 595, height: 842)
+        var mediaBox = CGRect(x: 0, y: 0, width: 1000, height: 625)
         guard let context = CGContext(url as CFURL, mediaBox: &mediaBox, nil) else {
             throw TBWKError.invalidFormat("Could not create PDF context.")
         }
@@ -597,17 +597,17 @@ public enum TBWKExporter {
         let subtitle = "Method: \(measurement.properties.methodTitle)    Time: \(isoDisplayFormatter().string(from: measurement.time))"
 
         let titleAttributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.boldSystemFont(ofSize: 18),
+            .font: NSFont.boldSystemFont(ofSize: 24),
             .foregroundColor: NSColor.black,
         ]
         let subtitleAttributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 10),
+            .font: NSFont.systemFont(ofSize: 13),
             .foregroundColor: NSColor.darkGray,
         ]
-        NSString(string: title).draw(at: CGPoint(x: 48, y: 790), withAttributes: titleAttributes)
-        NSString(string: subtitle).draw(at: CGPoint(x: 48, y: 770), withAttributes: subtitleAttributes)
+        NSString(string: title).draw(at: CGPoint(x: 56, y: 575), withAttributes: titleAttributes)
+        NSString(string: subtitle).draw(at: CGPoint(x: 56, y: 548), withAttributes: subtitleAttributes)
 
-        let plotRect = CGRect(x: 70, y: 130, width: 470, height: 600)
+        let plotRect = CGRect(x: 92, y: 92, width: 850, height: 420)
         NSColor.black.setStroke()
         let border = NSBezierPath(rect: plotRect)
         border.lineWidth = 1
@@ -628,7 +628,7 @@ public enum TBWKExporter {
         let scaledMaxY = maxY + yPadding
         let yRange = max(scaledMaxY - scaledMinY, 0.1)
 
-        drawAxisLabels(measurement: measurement, plotRect: plotRect)
+        drawAxisLabels(measurement: measurement, plotRect: plotRect, pageRect: pageRect)
         drawGrid(plotRect: plotRect)
 
         let path = NSBezierPath()
@@ -652,22 +652,22 @@ public enum TBWKExporter {
         drawTickLabels(minX: minX, maxX: maxX, minY: scaledMinY, maxY: scaledMaxY, plotRect: plotRect)
     }
 
-    private static func drawAxisLabels(measurement: Measurement, plotRect: CGRect) {
+    private static func drawAxisLabels(measurement: Measurement, plotRect: CGRect, pageRect: CGRect) {
         let labelAttributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 11),
+            .font: NSFont.systemFont(ofSize: 13),
             .foregroundColor: NSColor.black,
         ]
 
         NSString(string: measurement.xLabel).draw(
-            in: CGRect(x: plotRect.midX - 80, y: 90, width: 160, height: 20),
+            in: CGRect(x: plotRect.midX - 110, y: 46, width: 220, height: 24),
             withAttributes: labelAttributes
         )
 
         NSGraphicsContext.current?.cgContext.saveGState()
-        NSGraphicsContext.current?.cgContext.translateBy(x: 30, y: plotRect.midY + 80)
+        NSGraphicsContext.current?.cgContext.translateBy(x: 34, y: plotRect.midY + 78)
         NSGraphicsContext.current?.cgContext.rotate(by: -.pi / 2)
         NSString(string: measurement.yLabel).draw(
-            in: CGRect(x: 0, y: 0, width: 160, height: 20),
+            in: CGRect(x: 0, y: 0, width: 220, height: 24),
             withAttributes: labelAttributes
         )
         NSGraphicsContext.current?.cgContext.restoreGState()
@@ -693,7 +693,7 @@ public enum TBWKExporter {
 
     private static func drawTickLabels(minX: Double, maxX: Double, minY: Double, maxY: Double, plotRect: CGRect) {
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 9),
+            .font: NSFont.systemFont(ofSize: 10),
             .foregroundColor: NSColor.darkGray,
         ]
 
@@ -702,14 +702,14 @@ public enum TBWKExporter {
             let xValue = minX + (maxX - minX) * fraction
             let x = plotRect.minX + CGFloat(fraction) * plotRect.width
             NSString(string: formatTick(xValue)).draw(
-                at: CGPoint(x: x - 12, y: plotRect.minY - 18),
+                at: CGPoint(x: x - 14, y: plotRect.minY - 22),
                 withAttributes: attributes
             )
 
             let yValue = minY + (maxY - minY) * fraction
             let y = plotRect.minY + CGFloat(fraction) * plotRect.height
             NSString(string: formatTick(yValue)).draw(
-                at: CGPoint(x: plotRect.minX - 48, y: y - 5),
+                at: CGPoint(x: plotRect.minX - 54, y: y - 6),
                 withAttributes: attributes
             )
         }

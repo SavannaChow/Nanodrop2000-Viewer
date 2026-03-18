@@ -89,6 +89,31 @@ struct ViewerRootView: View {
                 .disabled(viewModel.worksheet == nil || viewModel.isLoading)
             }
 
+            Menu("Reference Spectra") {
+                ForEach(viewModel.availableReferenceSpectra) { reference in
+                    Button {
+                        viewModel.toggleReferenceSpectrum(id: reference.id)
+                    } label: {
+                        HStack {
+                            Text(reference.shortTitle)
+                            Spacer()
+                            if viewModel.selectedReferenceIDs.contains(reference.id) {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Picker("Normalization", selection: $viewModel.referenceNormalizationMode) {
+                ForEach(ReferenceNormalizationMode.allCases) { mode in
+                    Text(mode.rawValue).tag(mode)
+                }
+            }
+            .pickerStyle(.menu)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             Text(viewModel.displayedFileName)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
@@ -187,6 +212,8 @@ struct ViewerRootView: View {
 
                 SpectrumChartView(
                     selections: viewModel.selectedMeasurements,
+                    referenceSpectra: viewModel.selectedReferenceSpectra,
+                    referenceNormalizationMode: viewModel.referenceNormalizationMode,
                     onShowInfo: { viewModel.isShowingInfo = true }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -254,6 +281,8 @@ private struct SummaryChip: View {
 
 private struct SpectrumChartView: View {
     let selections: [(Int, TBWKCore.Measurement)]
+    let referenceSpectra: [ReferenceSpectrum]
+    let referenceNormalizationMode: ReferenceNormalizationMode
     let onShowInfo: () -> Void
 
     @State private var selectedPoint: ChartSelection?
@@ -275,11 +304,16 @@ private struct SpectrumChartView: View {
                 Text("Absrobance(nm)")
                     .font(.headline)
                 Spacer()
+                if !referenceSpectra.isEmpty {
+                    Text("Reference: \(referenceNormalizationMode.rawValue)")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
                 Button("Info", action: onShowInfo)
                 Button("Reset Selection") { selectedPoint = nil }
             }
 
-            if selections.count > 1 {
+            if selections.count > 1 || !referenceSpectra.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
                         ForEach(selections, id: \.0) { index, measurement in
@@ -288,6 +322,23 @@ private struct SpectrumChartView: View {
                                     .fill(seriesColor(for: index))
                                     .frame(width: 10, height: 10)
                                 Text(measurement.title)
+                                    .font(.subheadline.weight(.medium))
+                                    .lineLimit(1)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Color(nsColor: .separatorColor))
+                            )
+                        }
+
+                        ForEach(referenceSpectra) { reference in
+                            HStack(spacing: 6) {
+                                Capsule()
+                                    .fill(referenceColor(for: reference.id))
+                                    .frame(width: 18, height: 4)
+                                Text("\(reference.title) (\(referenceNormalizationMode.rawValue))")
                                     .font(.subheadline.weight(.medium))
                                     .lineLimit(1)
                             }
@@ -392,6 +443,25 @@ private struct SpectrumChartView: View {
             context.stroke(path, with: .color(seriesColor(for: seriesIndex)), lineWidth: 2.5)
         }
 
+        for reference in referenceSpectra {
+            let normalized = normalizedReferenceSpectrum(reference)
+            guard !normalized.isEmpty else { continue }
+            var path = Path()
+            for (offset, point) in normalized.enumerated() {
+                let chartPoint = chartPoint(x: point.x, y: point.y, in: plotRect)
+                if offset == 0 {
+                    path.move(to: chartPoint)
+                } else {
+                    path.addLine(to: chartPoint)
+                }
+            }
+            context.stroke(
+                path,
+                with: .color(referenceColor(for: reference.id)),
+                style: StrokeStyle(lineWidth: 2.0, dash: [8, 5])
+            )
+        }
+
         for tick in 0...5 {
             let fraction = Double(tick) / 5.0
             let xValue = minX + (maxX - minX) * fraction
@@ -454,6 +524,99 @@ private struct SpectrumChartView: View {
             .accentColor, .red, .green, .orange, .purple, .pink, .teal, .brown, .indigo, .mint
         ]
         return palette[index % palette.count]
+    }
+
+    private func referenceColor(for id: String) -> Color {
+        let palette: [Color] = [
+            Color(red: 0.10, green: 0.10, blue: 0.10),
+            Color(red: 0.58, green: 0.12, blue: 0.12),
+            Color(red: 0.08, green: 0.32, blue: 0.62),
+            Color(red: 0.43, green: 0.27, blue: 0.63),
+            Color(red: 0.42, green: 0.36, blue: 0.08),
+            Color(red: 0.00, green: 0.45, blue: 0.45),
+            Color(red: 0.55, green: 0.24, blue: 0.00),
+            Color(red: 0.36, green: 0.00, blue: 0.36),
+        ]
+        let orderedIDs = referenceSpectra.map(\.id).sorted()
+        let index = orderedIDs.firstIndex(of: id) ?? 0
+        return palette[index]
+    }
+
+    private func normalizedReferenceSpectrum(_ reference: ReferenceSpectrum) -> [(x: Double, y: Double)] {
+        let points = zip(reference.xValues, reference.yValues)
+            .filter { $0.0 >= minX && $0.0 <= maxX }
+            .map { (x: $0.0, y: $0.1) }
+
+        guard !points.isEmpty else { return [] }
+
+        let yMin = points.map(\.y).min() ?? 0
+        let shifted = points.map { (x: $0.x, y: $0.y - yMin) }
+        let shiftedMax = shifted.map(\.y).max() ?? 0
+        let targetMeasurement = selections.first(where: { $0.0 == selectedSeriesIndex })?.1 ?? selections.first?.1
+        let targetPeak = maxY * 0.92
+
+        switch referenceNormalizationMode {
+        case .peakNormalize:
+            let scale = targetPeak / max(shiftedMax, 0.00001)
+            return shifted.map { (x: $0.x, y: $0.y * scale) }
+        case .areaNormalize:
+            let referenceArea = trapezoidArea(points: shifted)
+            let sampleArea = targetMeasurement.map(normalizationTargetArea(for:)) ?? targetPeak
+            let scale = sampleArea / max(referenceArea, 0.00001)
+            return shifted.map { (x: $0.x, y: $0.y * scale) }
+        case .fitToSample:
+            guard let targetMeasurement else {
+                let scale = targetPeak / max(shiftedMax, 0.00001)
+                return shifted.map { (x: $0.x, y: $0.y * scale) }
+            }
+
+            let overlapping = shifted.compactMap { point -> (Double, Double)? in
+                guard let sampleY = interpolatedSampleY(at: point.x, measurement: targetMeasurement) else {
+                    return nil
+                }
+                return (point.y, max(sampleY, 0))
+            }
+
+            let numerator = overlapping.reduce(0.0) { $0 + ($1.0 * $1.1) }
+            let denominator = overlapping.reduce(0.0) { $0 + ($1.0 * $1.0) }
+            let scale = numerator / max(denominator, 0.00001)
+            return shifted.map { (x: $0.x, y: $0.y * scale) }
+        }
+    }
+
+    private var selectedSeriesIndex: Int {
+        selections.first?.0 ?? 0
+    }
+
+    private func normalizationTargetArea(for measurement: TBWKCore.Measurement) -> Double {
+        let filtered = zip(measurement.xValues, measurement.yValues)
+            .filter { $0.0 >= minX && $0.0 <= maxX }
+            .map { (x: $0.0, y: max($0.1, 0)) }
+        return trapezoidArea(points: filtered)
+    }
+
+    private func trapezoidArea(points: [(x: Double, y: Double)]) -> Double {
+        guard points.count > 1 else { return 0 }
+        return zip(points, points.dropFirst()).reduce(0.0) { partial, pair in
+            let dx = pair.1.x - pair.0.x
+            let avgY = (pair.0.y + pair.1.y) / 2.0
+            return partial + dx * avgY
+        }
+    }
+
+    private func interpolatedSampleY(at x: Double, measurement: TBWKCore.Measurement) -> Double? {
+        let xs = measurement.xValues
+        let ys = measurement.yValues
+        guard xs.count == ys.count, xs.count > 1 else { return nil }
+
+        for index in 0..<(xs.count - 1) {
+            let x0 = xs[index]
+            let x1 = xs[index + 1]
+            guard x >= x0, x <= x1, x1 != x0 else { continue }
+            let fraction = (x - x0) / (x1 - x0)
+            return ys[index] + (ys[index + 1] - ys[index]) * fraction
+        }
+        return nil
     }
 }
 
