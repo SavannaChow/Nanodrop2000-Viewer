@@ -1,8 +1,17 @@
 .idea/*
-*.
-
-__pycache__/*
-
-build/*
-dist/*
-*.egg-info/*
+*.swp
+.DS_Store
+.build/
+.swift-cache/
+build/
+dist/
+**/__pycache__/
+tbwk-opener/
+tbwk_opener.egg-info/
+2026_03_18_Nucleic Acid_summary.csv
+2026_03_18_Nucleic Acid_spectrum.csv
+2026_03_18_Nucleic Acid_spectra.pdf
+*_summary.csv
+*_spectrum.csv
+*_spectra.pdf
+@command_history.txt

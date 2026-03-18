@@ -1,52 +1,54 @@
-# tbwk-opener
-A python package to open and read tbwk files generated from the NanoDrop 2000 software.
+# TBWK Converter
 
-Testing: ![Python application](https://github.com/Gillingham-Lab/tbwk-opener/workflows/Python%20application/badge.svg)
+A standalone Swift/macOS converter for NanoDrop `.tbwk` files.
 
-## Features
-This library has so far only been tested with Nucleic Acid worksheets.
+It converts each input file into:
 
-- Can import tbwk files to read measurements contained within the file
-- Successfully reads y- and x-values of a recorded spectrum
-- Also reports on tabled data contained in the worksheet (such as A260 for nucleic acids, 
-or direct nucleic concentration as chosen by the method)
+- `*_summary.csv`
+- `*_spectrum.csv`
+- `*_spectra.pdf`
 
-A protein worksheet (no example provided) showed similar behaviour and should work without any issues.
+The macOS app is a drag-and-drop droplet: drop one or more files onto the app and it exports the CSV and PDF files next to the source file.
 
-## Installation
+## Repo layout
 
-Make sure you've installed numpy and scipy before attempting to install tbwk-opener from pip, then use:
+- `Sources/TBWKCore`: native TBWK parser, CSV export, PDF rendering
+- `Sources/tbwk-convert`: command-line entry point
+- `app/TBWKConverterDroplet.applescript`: drag-and-drop macOS app wrapper
+- `scripts/build-mac-app.sh`: builds the `.app` bundle
 
-```shell script
-pip install tbwk-opener
+## Build
+
+```bash
+swift build
 ```
 
-## Usage
+## Test
 
-Get all measurements from a worksheet and report on concentration using the absorption at 260 nm:
-
-```python
-from tbwk import Worksheet
-
-worksheet = Worksheet.import_worksheet("examples/nanodrop-dna-measurements-01.twbk")
-
-factor = (2.05 + 2.30)/2 # μM per absorption unit
-for measurement in worksheet:
-    print(f"{measurement.title:20}{measurement.get_absorption_at(260)*factor:.2f} μM")
+```bash
+swift test
 ```
+
+## Build the macOS app
+
+```bash
+./scripts/build-mac-app.sh
+```
+
+After building, the app bundle will be here:
 
 ```text
-wash                0.18 μM
-blank               0.02 μM
-BSD01               61.47 μM
-BSD01               61.11 μM
-BSD01 cntl A1       37.87 μM
-wash                0.57 μM
-BSD01 cntl A2       33.94 μM
-wash                0.27 μM
-BSD01 cntl A3       44.39 μM
-BSD01 cntl A3       0.35 μM
-BSD01 cntl A4       40.00 μM
-wash                0.05 μM
-wash                0.02 μM
+dist/TBWK Converter.app
+```
+
+## Command-line usage
+
+```bash
+./.build/debug/tbwk-convert /path/to/file.tbwk
+```
+
+You can also pass multiple files:
+
+```bash
+./.build/debug/tbwk-convert file1.tbwk file2.tbwk
 ```
