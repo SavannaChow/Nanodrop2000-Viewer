@@ -9,6 +9,7 @@ let package = Package(
     products: [
         .library(name: "TBWKCore", targets: ["TBWKCore"]),
         .executable(name: "tbwk-convert", targets: ["tbwk-convert"]),
+        .executable(name: "NanodropViewerMac", targets: ["NanodropViewerMac"]),
     ],
     targets: [
         .target(
@@ -19,6 +20,14 @@ let package = Package(
             name: "tbwk-convert",
             dependencies: ["TBWKCore"],
             path: "Sources/tbwk-convert"
+        ),
+        .executableTarget(
+            name: "NanodropViewerMac",
+            dependencies: ["TBWKCore"],
+            path: "Sources/NanodropViewerMac",
+            resources: [
+                .copy("Resources"),
+            ]
         ),
         .testTarget(
             name: "TBWKCoreTests",
