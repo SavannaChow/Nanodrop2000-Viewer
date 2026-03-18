@@ -3,6 +3,10 @@
 .DS_Store
 .build/
 .swift-cache/
+android-app/.gradle/
+android-app/build/
+android-app/app/build/
+android-app/local.properties
 build/
 dist/
 **/__pycache__/
