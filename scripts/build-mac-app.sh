@@ -23,4 +23,8 @@ chmod +x "$APP_PATH/Contents/Resources/tbwk-convert"
 /usr/libexec/PlistBuddy -c "Set :CFBundleName $APP_NAME" "$APP_PATH/Contents/Info.plist" || true
 /usr/libexec/PlistBuddy -c "Add :LSUIElement bool false" "$APP_PATH/Contents/Info.plist" || true
 
+if [[ -n "${CODESIGN_IDENTITY:-}" ]]; then
+  codesign --force --deep --sign "$CODESIGN_IDENTITY" "$APP_PATH"
+fi
+
 echo "Built app at: $APP_PATH"

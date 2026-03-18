@@ -41,6 +41,24 @@ After building, the app bundle will be here:
 dist/TBWK Converter.app
 ```
 
+To sign during build, provide a signing identity:
+
+```bash
+CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" ./scripts/build-mac-app.sh
+```
+
+## Notarize the app
+
+If you have Apple Developer credentials, you can notarize the built app:
+
+```bash
+chmod +x scripts/notarize-mac-app.sh
+APPLE_ID_TEAM_ID="TEAMID" \
+APPLE_ID_USERNAME="you@example.com" \
+APPLE_APP_PASSWORD="app-specific-password" \
+./scripts/notarize-mac-app.sh
+```
+
 ## Command-line usage
 
 ```bash
