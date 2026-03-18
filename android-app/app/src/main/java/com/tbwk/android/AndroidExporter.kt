@@ -1,40 +1,70 @@
 package com.tbwk.android
 
+import android.content.ContentValues
 import android.content.Context
+import android.net.Uri
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.DashPathEffect
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.pdf.PdfDocument
 import android.os.Environment
-import java.io.File
+import android.provider.MediaStore
+import java.io.ByteArrayOutputStream
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 data class ExportedFiles(
-    val directory: File,
-    val summaryFile: File,
-    val spectrumFile: File,
-    val pdfFile: File,
+    val directoryDisplayPath: String,
+    val summaryFileName: String,
+    val spectrumFileName: String,
+    val pdfFileName: String,
+    val summaryUri: Uri,
+    val spectrumUri: Uri,
+    val pdfUri: Uri,
 )
 
 object AndroidExporter {
     fun export(context: Context, fileBaseName: String, worksheet: Worksheet): ExportedFiles {
-        val exportDir = File(
-            context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
-            "tbwk-exports"
-        ).apply { mkdirs() }
-
         val baseName = fileBaseName.substringBeforeLast('.')
-        val summaryFile = File(exportDir, "${baseName}_summary.csv")
-        val spectrumFile = File(exportDir, "${baseName}_spectrum.csv")
-        val pdfFile = File(exportDir, "${baseName}_spectra.pdf")
+        val sanitizedBaseName = sanitizeForFileName(baseName)
+        val relativeDirectory = "${Environment.DIRECTORY_DOCUMENTS}/Nanodrop2000_viewer/$sanitizedBaseName/"
+        val summaryFileName = "${baseName}_summary.csv"
+        val spectrumFileName = "${baseName}_spectrum.csv"
+        val pdfFileName = "${baseName}_spectra.pdf"
 
-        summaryFile.writeText(buildSummaryCsv(worksheet))
-        spectrumFile.writeText(buildSpectrumCsv(worksheet))
-        writeSpectraPdf(worksheet, pdfFile)
+        val summaryUri = writePublicDocument(
+            context = context,
+            relativeDirectory = relativeDirectory,
+            displayName = summaryFileName,
+            mimeType = "text/csv",
+            bytes = buildSummaryCsv(worksheet).toByteArray()
+        )
+        val spectrumUri = writePublicDocument(
+            context = context,
+            relativeDirectory = relativeDirectory,
+            displayName = spectrumFileName,
+            mimeType = "text/csv",
+            bytes = buildSpectrumCsv(worksheet).toByteArray()
+        )
+        val pdfUri = writePublicDocument(
+            context = context,
+            relativeDirectory = relativeDirectory,
+            displayName = pdfFileName,
+            mimeType = "application/pdf",
+            bytes = buildSpectraPdfBytes(worksheet)
+        )
 
-        return ExportedFiles(exportDir, summaryFile, spectrumFile, pdfFile)
+        return ExportedFiles(
+            directoryDisplayPath = "Documents/Nanodrop2000_viewer/$sanitizedBaseName",
+            summaryFileName = summaryFileName,
+            spectrumFileName = spectrumFileName,
+            pdfFileName = pdfFileName,
+            summaryUri = summaryUri,
+            spectrumUri = spectrumUri,
+            pdfUri = pdfUri,
+        )
     }
 
     private fun buildSummaryCsv(worksheet: Worksheet): String {
@@ -102,7 +132,7 @@ object AndroidExporter {
         }
     }
 
-    private fun writeSpectraPdf(worksheet: Worksheet, outputFile: File) {
+    private fun buildSpectraPdfBytes(worksheet: Worksheet): ByteArray {
         val document = PdfDocument()
         worksheet.measurements.forEachIndexed { index, measurement ->
             val pageInfo = PdfDocument.PageInfo.Builder(842, 595, index + 1).create()
@@ -110,8 +140,11 @@ object AndroidExporter {
             drawMeasurementPage(page.canvas, measurement, index)
             document.finishPage(page)
         }
-        outputFile.outputStream().use(document::writeTo)
-        document.close()
+        return ByteArrayOutputStream().use { output ->
+            document.writeTo(output)
+            document.close()
+            output.toByteArray()
+        }
     }
 
     private fun drawMeasurementPage(canvas: Canvas, measurement: Measurement, index: Int) {
@@ -132,6 +165,12 @@ object AndroidExporter {
             color = Color.rgb(220, 226, 234)
             strokeWidth = 1f
             style = Paint.Style.STROKE
+        }
+        val markerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(102, 75, 85, 99)
+            strokeWidth = 2f
+            style = Paint.Style.STROKE
+            pathEffect = DashPathEffect(floatArrayOf(10f, 10f), 0f)
         }
         val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.rgb(15, 108, 189)
@@ -169,19 +208,24 @@ object AndroidExporter {
         }
         canvas.drawRect(left, top, right, bottom, borderPaint)
 
-        val xMin = measurement.xValues.minOrNull() ?: 0.0
-        val xMax = measurement.xValues.maxOrNull() ?: 1.0
-        val yMin = measurement.yValues.minOrNull() ?: 0.0
-        val yMax = measurement.yValues.maxOrNull() ?: 1.0
-        val yPadding = maxOf(0.05, (yMax - yMin) * 0.08)
-        val plotYMin = yMin - yPadding
-        val plotYMax = yMax + yPadding
+        val xMax = 350.0
+        val plotXMin = 220.0
+        val plotXMax = xMax
+        val plotYMin = 0.0
+        val plotYMax = ((measurement.yValues.maxOrNull() ?: 0.0) + 1.0).coerceAtLeast(1.0)
+
+        listOf(230.0, 260.0, 280.0).forEach { marker ->
+            if (marker in plotXMin..plotXMax) {
+                val markerX = left + (((marker - plotXMin) / (plotXMax - plotXMin).coerceAtLeast(0.00001)) * width).toFloat()
+                canvas.drawLine(markerX, top, markerX, bottom, markerPaint)
+            }
+        }
 
         val path = Path()
         measurement.xValues.indices.forEach { point ->
             val xValue = measurement.xValues[point]
             val yValue = measurement.yValues[point]
-            val scaledX = left + (((xValue - xMin) / (xMax - xMin).coerceAtLeast(0.00001)) * width).toFloat()
+            val scaledX = left + (((xValue - plotXMin) / (plotXMax - plotXMin).coerceAtLeast(0.00001)) * width).toFloat()
             val scaledY = bottom - (((yValue - plotYMin) / (plotYMax - plotYMin).coerceAtLeast(0.00001)) * height).toFloat()
             if (point == 0) path.moveTo(scaledX, scaledY) else path.lineTo(scaledX, scaledY)
         }
@@ -189,10 +233,15 @@ object AndroidExporter {
 
         repeat(6) { tick ->
             val fraction = tick / 5f
-            val xValue = xMin + (xMax - xMin) * fraction
+            val xValue = plotXMin + (plotXMax - plotXMin) * fraction
             val yValue = plotYMax - (plotYMax - plotYMin) * fraction
             canvas.drawText("%.1f".format(xValue), left + width * fraction - 16f, bottom + 26f, axisPaint)
             canvas.drawText("%.2f".format(yValue), 16f, top + height * fraction + 6f, axisPaint)
+        }
+
+        listOf(230, 260, 280).forEach { marker ->
+            val markerX = left + (((marker - plotXMin) / (plotXMax - plotXMin).coerceAtLeast(0.00001)) * width).toFloat()
+            canvas.drawText(marker.toString(), markerX - 10f, bottom + 44f, axisPaint)
         }
 
         canvas.drawText(measurement.xLabel, left + 250f, bottom + 55f, bodyPaint)
@@ -210,4 +259,56 @@ object AndroidExporter {
     private fun displayFormatter(): DateTimeFormatter =
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
             .withZone(ZoneId.systemDefault())
+
+    private fun writePublicDocument(
+        context: Context,
+        relativeDirectory: String,
+        displayName: String,
+        mimeType: String,
+        bytes: ByteArray,
+    ): Uri {
+        deleteExistingDocument(context, relativeDirectory, displayName)
+
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+            put(MediaStore.MediaColumns.RELATIVE_PATH, relativeDirectory)
+        }
+
+        val collection = MediaStore.Files.getContentUri("external")
+        val uri = context.contentResolver.insert(collection, values)
+            ?: error("Failed to create $displayName in public Documents.")
+
+        context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
+            ?: error("Failed to write $displayName in public Documents.")
+
+        return uri
+    }
+
+    private fun deleteExistingDocument(
+        context: Context,
+        relativeDirectory: String,
+        displayName: String,
+    ) {
+        val collection = MediaStore.Files.getContentUri("external")
+        val selection = "${MediaStore.MediaColumns.RELATIVE_PATH} = ? AND ${MediaStore.MediaColumns.DISPLAY_NAME} = ?"
+        val selectionArgs = arrayOf(relativeDirectory, displayName)
+        context.contentResolver.query(
+            collection,
+            arrayOf(MediaStore.MediaColumns._ID),
+            selection,
+            selectionArgs,
+            null
+        )?.use { cursor ->
+            val idColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+            while (cursor.moveToNext()) {
+                val id = cursor.getLong(idColumn)
+                val itemUri = Uri.withAppendedPath(collection, id.toString())
+                context.contentResolver.delete(itemUri, null, null)
+            }
+        }
+    }
+
+    private fun sanitizeForFileName(name: String): String =
+        name.replace(Regex("[\\\\/:*?\"<>|]"), "_").trim().ifEmpty { "tbwk_export" }
 }

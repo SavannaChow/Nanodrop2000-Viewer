@@ -92,7 +92,7 @@ class MainViewModel : ViewModel() {
             }.onSuccess { exported ->
                 uiState = uiState.copy(
                     isLoading = false,
-                    exportMessage = "Exported files to ${exported.directory.absolutePath}",
+                    exportMessage = "Exported files to ${exported.directoryDisplayPath}",
                 )
             }.onFailure { throwable ->
                 uiState = uiState.copy(

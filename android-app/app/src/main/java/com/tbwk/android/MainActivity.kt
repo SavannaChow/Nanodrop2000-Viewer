@@ -14,6 +14,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -64,12 +65,15 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -409,28 +413,36 @@ private data class ChartViewport(
     val maxY: Double,
 )
 
+private data class SelectedChartPoint(
+    val sourceIndex: Int,
+    val xValue: Double,
+    val yValue: Double,
+)
+
 @Composable
 private fun SpectrumChart(
     measurement: Measurement,
     onShowReference: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val baseMinX = measurement.xValues.minOrNull() ?: 0.0
-    val baseMaxX = measurement.xValues.maxOrNull() ?: 1.0
-    val baseYMin = measurement.yValues.minOrNull() ?: 0.0
-    val baseYMax = measurement.yValues.maxOrNull() ?: 1.0
-    val basePadding = maxOf(0.05, (baseYMax - baseYMin) * 0.08)
+    val baseMinX = 220.0
+    val baseMaxX = 350.0
+    val baseYMin = 0.0
+    val baseYMax = ((measurement.yValues.maxOrNull() ?: 0.0) + 1.0).coerceAtLeast(1.0)
     val fullViewport = ChartViewport(
         minX = baseMinX,
         maxX = baseMaxX,
-        minY = baseYMin - basePadding,
-        maxY = baseYMax + basePadding,
+        minY = baseYMin,
+        maxY = baseYMax,
     )
 
     var viewport by remember(measurement) { mutableStateOf(fullViewport) }
+    var selectedPoint by remember(measurement) { mutableStateOf<SelectedChartPoint?>(null) }
+    val tapThresholdPx = with(LocalDensity.current) { 28.dp.toPx() }
 
     LaunchedEffect(measurement) {
         viewport = fullViewport
+        selectedPoint = null
     }
 
     Column(modifier = modifier) {
@@ -459,6 +471,53 @@ private fun SpectrumChart(
                 .fillMaxSize()
                 .background(Color(0xFFF8FAFC), RoundedCornerShape(20.dp))
                 .border(1.dp, Color(0xFFD0D7E2), RoundedCornerShape(20.dp))
+                .pointerInput(measurement, viewport) {
+                    detectTapGestures { tapOffset ->
+                        val leftPadding = 72f
+                        val bottomPadding = 48f
+                        val topPadding = 20f
+                        val rightPadding = 16f
+                        val plotWidth = size.width - leftPadding - rightPadding
+                        val plotHeight = size.height - topPadding - bottomPadding
+                        if (plotWidth <= 0f || plotHeight <= 0f) {
+                            selectedPoint = null
+                            return@detectTapGestures
+                        }
+
+                        val plotLeft = leftPadding
+                        val plotTop = topPadding
+                        val plotBottom = topPadding + plotHeight
+                        val plotRight = plotLeft + plotWidth
+
+                        if (tapOffset.x !in plotLeft..plotRight || tapOffset.y !in plotTop..plotBottom) {
+                            selectedPoint = null
+                            return@detectTapGestures
+                        }
+
+                        var nearestPoint: SelectedChartPoint? = null
+                        var nearestDistance = Float.MAX_VALUE
+
+                        measurement.xValues.indices.forEach { pointIndex ->
+                            val xValue = measurement.xValues[pointIndex]
+                            if (xValue !in viewport.minX..viewport.maxX) return@forEach
+
+                            val yValue = measurement.yValues[pointIndex].coerceIn(viewport.minY, viewport.maxY)
+                            val xFraction = ((xValue - viewport.minX) / (viewport.maxX - viewport.minX).coerceAtLeast(0.00001)).toFloat()
+                            val yFraction = ((yValue - viewport.minY) / (viewport.maxY - viewport.minY).coerceAtLeast(0.00001)).toFloat()
+                            val pointX = plotLeft + plotWidth * xFraction
+                            val pointY = plotBottom - plotHeight * yFraction
+                            val dx = pointX - tapOffset.x
+                            val dy = pointY - tapOffset.y
+                            val distance = kotlin.math.sqrt(dx * dx + dy * dy)
+                            if (distance < nearestDistance) {
+                                nearestDistance = distance
+                                nearestPoint = SelectedChartPoint(pointIndex, xValue, measurement.yValues[pointIndex])
+                            }
+                        }
+
+                        selectedPoint = if (nearestDistance <= tapThresholdPx) nearestPoint else null
+                    }
+                }
                 .pointerInput(measurement) {
                     detectTransformGestures { _, pan, zoom, _ ->
                         val xSpan = (viewport.maxX - viewport.minX).coerceAtLeast(0.00001)
@@ -608,6 +667,36 @@ private fun SpectrumChart(
                     }
                 }
             }
+
+            selectedPoint?.let { point ->
+                if (point.xValue in viewport.minX..viewport.maxX) {
+                    val clampedY = point.yValue.coerceIn(viewport.minY, viewport.maxY)
+                    val xFraction = ((point.xValue - viewport.minX) / (viewport.maxX - viewport.minX).coerceAtLeast(0.00001)).toFloat()
+                    val yFraction = ((clampedY - viewport.minY) / (viewport.maxY - viewport.minY).coerceAtLeast(0.00001)).toFloat()
+                    val pointX = plotLeft + plotWidth * xFraction
+                    val pointY = plotBottom - plotHeight * yFraction
+
+                    drawCircle(
+                        color = Color.White,
+                        radius = 10f,
+                        center = Offset(pointX, pointY)
+                    )
+                    drawCircle(
+                        color = Color(0xFF0F6CBD),
+                        radius = 6f,
+                        center = Offset(pointX, pointY)
+                    )
+
+                    drawIntoCanvas { canvas ->
+                        canvas.nativeCanvas.drawText(
+                            "x=${"%.1f".format(point.xValue)} y=${"%.2f".format(point.yValue)}",
+                            (pointX + 14f).coerceAtMost(size.width - 220f),
+                            (pointY - 12f).coerceAtLeast(28f),
+                            textPaint
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -616,15 +705,19 @@ private fun SpectrumChart(
 private fun NanoDropReferenceDialog(onDismiss: () -> Unit) {
     val scrollState = rememberScrollState()
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Card(
             colors = CardDefaults.cardColors(containerColor = Color.White),
-            shape = RoundedCornerShape(24.dp),
-            modifier = Modifier.fillMaxWidth()
+            shape = RoundedCornerShape(0.dp),
+            modifier = Modifier
+                .fillMaxSize()
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxSize()
                     .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -642,7 +735,7 @@ private fun NanoDropReferenceDialog(onDismiss: () -> Unit) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(520.dp)
+                        .weight(1f)
                         .verticalScroll(scrollState),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -650,6 +743,12 @@ private fun NanoDropReferenceDialog(onDismiss: () -> Unit) {
                     Text("A260 (核酸波峰): 測定 DNA 或 RNA 的濃度。")
                     Text("A280 (蛋白質波峰): 檢測蛋白質污染。")
                     Text("A230 (有機雜質): 檢測酚類、胍鹽或碳水化合物等污染物。")
+                    Text("DNA: 260 nm")
+                    Text("protein: 280 nm")
+                    Text("phenol: 270 nm")
+                    Text("guanidine / salt: 230 nm")
+                    Text("EDTA: 230 nm")
+                    Text("carbohydrate: 230 nm")
 
                     Text("A260/280 Ratio:", fontWeight = FontWeight.Bold)
                     Text("DNA：~1.8")
@@ -692,6 +791,24 @@ private fun NanoDropReferenceDialog(onDismiss: () -> Unit) {
                     Image(
                         painter = painterResource(R.drawable.uv_absorbance_spectra_common_contaminant_with_dna),
                         contentDescription = "UV absorbance spectra common contaminants with DNA",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, Color(0xFFD0D7E2), RoundedCornerShape(16.dp))
+                    )
+
+                    Image(
+                        painter = painterResource(R.drawable.uv_absorbance_spectra_of_phenol_and_trizol_mixed_with_rna),
+                        contentDescription = "UV absorbance spectra of phenol and TRIzol mixed with RNA",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, Color(0xFFD0D7E2), RoundedCornerShape(16.dp))
+                    )
+
+                    Image(
+                        painter = painterResource(R.drawable.spectra_of_contaminated_dna),
+                        contentDescription = "Spectra of contaminated DNA",
                         contentScale = ContentScale.Fit,
                         modifier = Modifier
                             .fillMaxWidth()
