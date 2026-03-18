@@ -549,11 +549,15 @@ private struct SpectrumChartView: View {
 
         guard !points.isEmpty else { return [] }
 
-        let yMin = points.map(\.y).min() ?? 0
-        let shifted = points.map { (x: $0.x, y: $0.y - yMin) }
+        let shifted = baselineCorrect(points: points)
         let shiftedMax = shifted.map(\.y).max() ?? 0
         let targetMeasurement = selections.first(where: { $0.0 == selectedSeriesIndex })?.1 ?? selections.first?.1
-        let targetPeak = maxY * 0.92
+        let targetMeasurementPoints = targetMeasurement.map { baselineCorrect(points:
+            zip($0.xValues, $0.yValues)
+                .filter { $0.0 >= minX && $0.0 <= maxX }
+                .map { (x: $0.0, y: $0.1) }
+        ) } ?? []
+        let targetPeak = max(targetMeasurementPoints.map(\.y).max() ?? 0, 0.00001)
 
         switch referenceNormalizationMode {
         case .peakNormalize:
@@ -589,10 +593,17 @@ private struct SpectrumChartView: View {
     }
 
     private func normalizationTargetArea(for measurement: TBWKCore.Measurement) -> Double {
-        let filtered = zip(measurement.xValues, measurement.yValues)
+        let filtered = baselineCorrect(points:
+            zip(measurement.xValues, measurement.yValues)
             .filter { $0.0 >= minX && $0.0 <= maxX }
             .map { (x: $0.0, y: max($0.1, 0)) }
+        )
         return trapezoidArea(points: filtered)
+    }
+
+    private func baselineCorrect(points: [(x: Double, y: Double)]) -> [(x: Double, y: Double)] {
+        guard let minY = points.map(\.y).min() else { return [] }
+        return points.map { (x: $0.x, y: max($0.y - minY, 0)) }
     }
 
     private func trapezoidArea(points: [(x: Double, y: Double)]) -> Double {
