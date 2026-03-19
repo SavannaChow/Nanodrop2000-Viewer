@@ -192,6 +192,27 @@ struct ViewerRootView: View {
                         Text("\(viewModel.selectedMeasurements.count) samples selected")
                             .font(.title3.weight(.semibold))
                         Spacer()
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 10) {
+                                ForEach(viewModel.selectedMeasurements, id: \.0) { index, measurement in
+                                    HStack(spacing: 6) {
+                                        Circle()
+                                            .fill(Color.seriesColor(for: index))
+                                            .frame(width: 10, height: 10)
+                                        Text(measurement.title)
+                                            .font(.subheadline.weight(.medium))
+                                            .lineLimit(1)
+                                    }
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .stroke(Color(nsColor: .separatorColor))
+                                    )
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                     .padding(.horizontal, 4)
                 } else if let measurement = viewModel.selectedMeasurement {
@@ -313,24 +334,27 @@ private struct SpectrumChartView: View {
                 Button("Reset Selection") { selectedPoint = nil }
             }
 
-            if selections.count > 1 || !referenceSpectra.isEmpty {
+            let showSampleLegendInChart = selections.count <= 1
+            if showSampleLegendInChart || !referenceSpectra.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
-                        ForEach(selections, id: \.0) { index, measurement in
-                            HStack(spacing: 6) {
-                                Circle()
-                                    .fill(seriesColor(for: index))
-                                    .frame(width: 10, height: 10)
-                                Text(measurement.title)
-                                    .font(.subheadline.weight(.medium))
-                                    .lineLimit(1)
+                        if showSampleLegendInChart {
+                            ForEach(selections, id: \.0) { index, measurement in
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(seriesColor(for: index))
+                                        .frame(width: 10, height: 10)
+                                    Text(measurement.title)
+                                        .font(.subheadline.weight(.medium))
+                                        .lineLimit(1)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .stroke(Color(nsColor: .separatorColor))
+                                )
                             }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(Color(nsColor: .separatorColor))
-                            )
                         }
 
                         ForEach(referenceSpectra) { reference in
@@ -520,10 +544,7 @@ private struct SpectrumChartView: View {
     }
 
     private func seriesColor(for index: Int) -> Color {
-        let palette: [Color] = [
-            .accentColor, .red, .green, .orange, .purple, .pink, .teal, .brown, .indigo, .mint
-        ]
-        return palette[index % palette.count]
+        Color.seriesColor(for: index)
     }
 
     private func referenceColor(for id: String) -> Color {
@@ -628,6 +649,15 @@ private struct SpectrumChartView: View {
             return ys[index] + (ys[index + 1] - ys[index]) * fraction
         }
         return nil
+    }
+}
+
+private extension Color {
+    static func seriesColor(for index: Int) -> Color {
+        let palette: [Color] = [
+            .accentColor, .red, .green, .orange, .purple, .pink, .teal, .brown, .indigo, .mint
+        ]
+        return palette[index % palette.count]
     }
 }
 

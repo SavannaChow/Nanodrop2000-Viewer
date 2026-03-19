@@ -59,6 +59,21 @@ cat > "$APP_PATH/Contents/Info.plist" <<PLIST
     <string>nanodrop 2000 viewer</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>TBWK Worksheet</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>com.savannachow.tbwk</string>
+            </array>
+        </dict>
+    </array>
     <key>CFBundleShortVersionString</key>
     <string>${MARKETING_VERSION}</string>
     <key>CFBundleVersion</key>
@@ -71,6 +86,29 @@ cat > "$APP_PATH/Contents/Info.plist" <<PLIST
     <string>NSApplication</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>UTExportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>com.savannachow.tbwk</string>
+            <key>UTTypeDescription</key>
+            <string>TBWK Worksheet</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>tbwk</string>
+                    <string>twbk</string>
+                </array>
+                <key>public.mime-type</key>
+                <string>application/x-tbwk</string>
+            </dict>
+        </dict>
+    </array>
 </dict>
 </plist>
 PLIST
