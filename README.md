@@ -1,6 +1,11 @@
 # nanodrop 2000 viewer
 
-這是一個跨平台工具，用來開啟、檢視、比對與匯出 NanoDrop 2000 軟體產生的 `.tbwk` / `.twbk` 檔案。
+這是一個跨平台工具，用來開啟、檢視、比對與匯出 NanoDrop 2000 產生的 Spectrum `.tbwk` / `.twbk` 檔案。
+https://www.thermofisher.com/tw/zt/home/industrial/spectroscopy-elemental-isotope-analysis/molecular-spectroscopy/uv-vis-spectrophotometry/instruments/nanodrop/resources.html
+
+nanodrop2000已經停產，Application也停止維護，並且沒有提供可供預覽Spectrum檔案的程式
+
+這個程式提供基本的nanodrop2000原廠控制軟體產生的twbk檔案預覽，你可以在macOS, Android平板或是手機、Windows10以上的電腦載入檔案看你的頻譜圖，而且也同時提供匯出為PDF功能
 
 目前提供：
 
