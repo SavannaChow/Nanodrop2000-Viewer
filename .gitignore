@@ -7,6 +7,8 @@ android-app/.gradle/
 android-app/build/
 android-app/app/build/
 android-app/local.properties
+windows-app/**/bin/
+windows-app/**/obj/
 build/
 dist/
 **/__pycache__/

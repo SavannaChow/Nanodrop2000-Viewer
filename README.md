@@ -1,93 +1,116 @@
-# TBWK Converter
+# nanodrop 2000 viewer
 
-A standalone Swift/macOS converter for NanoDrop `.tbwk` files.
+Cross-platform NanoDrop `.tbwk` tooling with three platform targets in one repository:
 
-It converts each input file into:
+- macOS app and Swift core
+- Android app
+- Windows-native rewrite
 
-- `*_summary.csv`
-- `*_spectrum.csv`
-- `*_spectra.pdf`
+`main` is the integrated release branch.
 
-The macOS app is a drag-and-drop droplet: drop one or more files onto the app and it exports the CSV and PDF files next to the source file.
+## Branch model
 
-This repo also includes an Android viewer prototype under `android-app/`. It parses `.tbwk` directly on-device and shows the sample list, summary values, and absorption spectrum plot in a landscape layout.
+Primary platform branches:
+
+- `macos`
+- `android`
+- `windows`
+
+Release branch:
+
+- `main`
+
+Work can happen on the platform branches first, then be integrated into `main` for tagged releases such as:
+
+- `v1.0.0`
+- `v1.1.0`
 
 ## Repo layout
 
-- `Sources/TBWKCore`: native TBWK parser, CSV export, PDF rendering
-- `Sources/tbwk-convert`: command-line entry point
-- `app/TBWKConverterDroplet.applescript`: drag-and-drop macOS app wrapper
-- `scripts/build-mac-app.sh`: builds the `.app` bundle
-- `android-app/`: Android app project for on-device viewing and plotting
+- `Sources/TBWKCore`
+  Swift parser/export core used by the macOS build.
+- `Sources/NanodropViewerMac`
+  SwiftUI macOS app.
+- `Sources/tbwk-convert`
+  Swift command-line entry point.
+- `android-app/`
+  Android app that parses `.tbwk` directly on-device.
+- `windows-app/`
+  Windows-native rewrite in C# and WPF.
+- `spectrum_database/`
+  Shared reference spectra source files.
+- `scripts/`
+  macOS build and packaging scripts.
+- `RELEASING.md`
+  Release flow and artifact naming rules.
 
-## Build
+## Platform status
+
+### macOS
+
+The macOS version includes:
+
+- direct `.tbwk` parsing
+- sample browsing
+- spectrum plotting
+- reference spectrum overlay
+- CSV/PDF export
+- file association support for `.tbwk` / `.twbk`
+
+Build:
 
 ```bash
 swift build
+./scripts/build-nanodrop-viewer-mac-app.sh
 ```
 
-## Test
+### Android
+
+The Android version includes:
+
+- direct `.tbwk` parsing in Kotlin
+- sample browsing
+- portrait and landscape layouts
+- spectrum plotting
+- reference spectrum overlay
+- CSV/PDF export
+- Android file association support for `.tbwk` / `.twbk`
+
+Build:
 
 ```bash
-swift test
+cd android-app
+./gradlew assembleDebug
 ```
 
-## Build the macOS app
+### Windows
+
+The Windows version is a Windows-native rewrite:
+
+- C# `tbwk` parser
+- C# `jdx` parser and normalization logic
+- WPF desktop app structure
+- Windows-specific packaging and file-association scripts
+
+On non-Windows machines, the cross-platform parser can be smoke-tested with:
 
 ```bash
-./scripts/build-mac-app.sh
+dotnet build windows-app/src/NanodropViewer.Cli/NanodropViewer.Cli.csproj
+dotnet windows-app/src/NanodropViewer.Cli/bin/Debug/net7.0/NanodropViewer.Cli.dll examples/nanodrop-dna-measurements-01.twbk windows-app/assets/reference_spectra
 ```
 
-After building, the app bundle will be here:
+The WPF app itself should be built on Windows.
 
-```text
-dist/TBWK Converter.app
-```
+## Release/build policy
 
-To sign during build, provide a signing identity:
+Use `main` for all formal releases.
 
-```bash
-CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" ./scripts/build-mac-app.sh
-```
+Do not commit generated binaries into `main`.
+Attach built apps/installers to GitHub Releases instead.
 
-## Notarize the app
+See [RELEASING.md](/Users/savannachow/Github/tbwk-opener/RELEASING.md) for:
 
-If you have Apple Developer credentials, you can notarize the built app:
-
-```bash
-chmod +x scripts/notarize-mac-app.sh
-APPLE_ID_TEAM_ID="TEAMID" \
-APPLE_ID_USERNAME="you@example.com" \
-APPLE_APP_PASSWORD="app-specific-password" \
-./scripts/notarize-mac-app.sh
-```
-
-## Command-line usage
-
-```bash
-./.build/debug/tbwk-convert /path/to/file.tbwk
-```
-
-You can also pass multiple files:
-
-```bash
-./.build/debug/tbwk-convert file1.tbwk file2.tbwk
-```
-
-## Android app
-
-The Android project lives in:
-
-```text
-android-app/
-```
-
-Features implemented in the project:
-
-- open a file with the system picker
-- parse `.tbwk` directly on Android in Kotlin
-- force landscape layout
-- left panel sample list with `Up` and `Down` buttons
-- right panel summary values and live spectrum plot
-
-To build the APK, open `android-app/` in Android Studio on a machine with the Android SDK installed, then run the standard `Build APK` flow. This machine did not have Android SDK / Gradle tooling available, so the Android project was written but not compiled into an APK here.
+- release flow
+- tag strategy
+- artifact naming rules
+- release asset guidance

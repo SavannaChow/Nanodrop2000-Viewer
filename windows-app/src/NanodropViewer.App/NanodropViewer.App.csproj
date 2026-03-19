@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <AssemblyName>NanodropViewer</AssemblyName>
+    <RootNamespace>NanodropViewer.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NanodropViewer.Core\NanodropViewer.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\assets\reference_spectra\*.jdx" LogicalName="ReferenceSpectra.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="..\..\contaminants\Contaminants-cause.jpg" Link="Resources\contaminants_cause.jpg" />
+    <Resource Include="..\..\contaminants\UV-absorbance_spectra_common_contaminant_with_DNA.jpg" Link="Resources\uv_absorbance_spectra_common_contaminant_with_dna.jpg" />
+    <Resource Include="..\..\contaminants\UV-absorbance spectra of phenol and TRIzol mixed with RNA.jpg" Link="Resources\uv_absorbance_spectra_of_phenol_and_trizol_mixed_with_rna.jpg" />
+    <Resource Include="..\..\contaminants\Spectra of contaminated DNA.jpg" Link="Resources\spectra_of_contaminated_dna.jpg" />
+  </ItemGroup>
+</Project>

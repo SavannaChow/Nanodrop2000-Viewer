@@ -18,6 +18,9 @@ data class ViewerUiState(
     val fileName: String? = null,
     val worksheet: Worksheet? = null,
     val selectedIndex: Int = 0,
+    val referenceSpectra: List<ReferenceSpectrum> = emptyList(),
+    val selectedReferenceIds: Set<String> = emptySet(),
+    val referenceNormalizationMode: ReferenceNormalizationMode = ReferenceNormalizationMode.PEAK_NORMALIZE,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val exportMessage: String? = null,
@@ -44,6 +47,9 @@ class MainViewModel : ViewModel() {
                     fileName = fileName,
                     worksheet = worksheet,
                     selectedIndex = 0,
+                    referenceSpectra = ReferenceSpectrumLibrary.loadBundledSpectra(context),
+                    selectedReferenceIds = emptySet(),
+                    referenceNormalizationMode = ReferenceNormalizationMode.PEAK_NORMALIZE,
                     isLoading = false,
                     errorMessage = null,
                     exportMessage = null,
@@ -124,6 +130,22 @@ class MainViewModel : ViewModel() {
     fun selectedMeasurement(): Measurement? {
         val worksheet = uiState.worksheet ?: return null
         return worksheet.measurements.getOrNull(uiState.selectedIndex)
+    }
+
+    fun selectedReferenceSpectra(): List<ReferenceSpectrum> {
+        return uiState.referenceSpectra.filter { it.id in uiState.selectedReferenceIds }
+    }
+
+    fun toggleReferenceSpectrum(id: String) {
+        val updated = uiState.selectedReferenceIds.toMutableSet()
+        if (!updated.add(id)) {
+            updated.remove(id)
+        }
+        uiState = uiState.copy(selectedReferenceIds = updated)
+    }
+
+    fun setReferenceNormalizationMode(mode: ReferenceNormalizationMode) {
+        uiState = uiState.copy(referenceNormalizationMode = mode)
     }
 
     private fun formatDouble(value: Double): String {

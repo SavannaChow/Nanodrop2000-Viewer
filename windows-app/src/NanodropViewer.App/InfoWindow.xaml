@@ -1,0 +1,98 @@
+﻿<Window x:Class="NanodropViewer.App.InfoWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Info"
+        Width="900"
+        Height="700"
+        MinWidth="720"
+        MinHeight="560"
+        Background="#FFF8FAFC">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Text="NanoDrop 說明"
+                           FontSize="26"
+                           FontWeight="Bold" />
+
+                <TextBlock Margin="0,18,0,8"
+                           Text="NanoDrop 數值"
+                           FontSize="18"
+                           FontWeight="SemiBold" />
+                <TextBlock Text="A260 (核酸波峰): 測定 DNA 或 RNA 的濃度。" />
+                <TextBlock Text="A280 (蛋白質波峰): 檢測蛋白質污染。" />
+                <TextBlock Text="A230 (有機雜質): 檢測酚類、胍鹽或碳水化合物等污染物。"
+                           TextWrapping="Wrap" />
+
+                <TextBlock Margin="0,8,0,0" Text="DNA: 260 nm" />
+                <TextBlock Text="protein: 280 nm" />
+                <TextBlock Text="phenol: 270 nm" />
+                <TextBlock Text="guanidine / salt: 230 nm" />
+                <TextBlock Text="EDTA: 230 nm" />
+                <TextBlock Text="carbohydrate: 230 nm" />
+
+                <TextBlock Margin="0,18,0,8"
+                           Text="A260/280 Ratio:"
+                           FontSize="18"
+                           FontWeight="SemiBold" />
+                <TextBlock Text="DNA：~1.8" />
+                <TextBlock Text="RNA：~2.0" />
+                <TextBlock Margin="0,8,0,0" Text="低比值表示的汙染物：" />
+                <TextBlock Margin="12,2,0,0" Text="· 蛋白質" />
+                <TextBlock Margin="12,2,0,0"
+                           Text="· 殘餘酚或提取方法中使用的其他試劑"
+                           TextWrapping="Wrap" />
+
+                <TextBlock Margin="0,18,0,8"
+                           Text="A260/230 Ratio:"
+                           FontSize="18"
+                           FontWeight="SemiBold" />
+                <TextBlock Text="DNA/RNA：~2.0-2.2" />
+                <TextBlock Margin="0,8,0,0" Text="低比值表示的汙染物：" />
+                <TextBlock Margin="12,2,0,0" Text="· 蛋白質" />
+                <TextBlock Margin="12,2,0,0"
+                           Text="· 碳水化合物殘留（通常是植物的問題）"
+                           TextWrapping="Wrap" />
+                <TextBlock Margin="12,2,0,0" Text="· 來自核酸提取的殘餘酚" />
+                <TextBlock Margin="12,2,0,0" Text="· 殘餘胍（通常用於管柱式套件）" />
+                <TextBlock Margin="12,2,0,0" Text="· 用於沉澱的糖原" />
+
+                <Border Margin="0,18,0,0"
+                        Padding="12"
+                        Background="#FFFFFFFF"
+                        BorderBrush="#FFD0D7E2"
+                        BorderThickness="1"
+                        CornerRadius="12">
+                    <TextBlock Text="無汙染的純化 DNA (A，紅色)&#x0a;被胍(B，綠色)和酚(C，褐色)汙染之光譜。"
+                               TextWrapping="Wrap" />
+                </Border>
+
+                <Image Margin="0,16,0,0"
+                       Stretch="Uniform"
+                       Source="Resources/contaminants_cause.jpg" />
+                <Image Margin="0,16,0,0"
+                       Stretch="Uniform"
+                       Source="Resources/uv_absorbance_spectra_common_contaminant_with_dna.jpg" />
+                <Image Margin="0,16,0,0"
+                       Stretch="Uniform"
+                       Source="Resources/uv_absorbance_spectra_of_phenol_and_trizol_mixed_with_rna.jpg" />
+                <Image Margin="0,16,0,0"
+                       Stretch="Uniform"
+                       Source="Resources/spectra_of_contaminated_dna.jpg" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="1"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,16,0,0">
+            <Button Content="Close"
+                    Padding="16,8"
+                    IsCancel="True" />
+        </StackPanel>
+    </Grid>
+</Window>

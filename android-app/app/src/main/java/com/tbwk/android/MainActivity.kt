@@ -1,7 +1,9 @@
 package com.tbwk.android
 
+import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Paint
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -39,6 +41,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -67,7 +70,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -78,10 +80,12 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val viewModel by viewModels<MainViewModel>()
+    private var lastHandledUri: Uri? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        handleIncomingIntent(intent)
 
         setContent {
             MaterialTheme {
@@ -104,6 +108,21 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIncomingIntent(intent)
+    }
+
+    private fun handleIncomingIntent(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_VIEW) return
+        val uri = intent.data ?: return
+        if (uri == lastHandledUri) return
+
+        lastHandledUri = uri
+        viewModel.loadUri(this, uri)
+    }
 }
 
 @Composable
@@ -114,6 +133,7 @@ private fun ViewerScreen(
 ) {
     val state = viewModel.uiState
     val measurement = viewModel.selectedMeasurement()
+    val selectedReferenceSpectra = viewModel.selectedReferenceSpectra()
     val visibleMeasurements = viewModel.visibleMeasurements()
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
@@ -130,6 +150,16 @@ private fun ViewerScreen(
                 isLandscape = true,
                 onOpenFile = onOpenFile,
                 onExport = onExport,
+                onToggleReferenceSpectrum = viewModel::toggleReferenceSpectrum,
+                onCycleReferenceNormalization = {
+                    viewModel.setReferenceNormalizationMode(
+                        when (state.referenceNormalizationMode) {
+                            ReferenceNormalizationMode.PEAK_NORMALIZE -> ReferenceNormalizationMode.AREA_NORMALIZE
+                            ReferenceNormalizationMode.AREA_NORMALIZE -> ReferenceNormalizationMode.FIT_TO_SAMPLE
+                            ReferenceNormalizationMode.FIT_TO_SAMPLE -> ReferenceNormalizationMode.PEAK_NORMALIZE
+                        }
+                    )
+                },
                 onMoveSelection = viewModel::moveSelection,
                 onSelectSample = viewModel::selectSample,
                 modifier = Modifier
@@ -140,6 +170,8 @@ private fun ViewerScreen(
             RightPanel(
                 measurement = measurement,
                 summaryItems = viewModel.summaryItems(),
+                referenceSpectra = selectedReferenceSpectra,
+                referenceNormalizationMode = state.referenceNormalizationMode,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -153,6 +185,8 @@ private fun ViewerScreen(
             RightPanel(
                 measurement = measurement,
                 summaryItems = viewModel.summaryItems(),
+                referenceSpectra = selectedReferenceSpectra,
+                referenceNormalizationMode = state.referenceNormalizationMode,
                 modifier = Modifier.weight(1f)
             )
 
@@ -162,6 +196,16 @@ private fun ViewerScreen(
                 isLandscape = false,
                 onOpenFile = onOpenFile,
                 onExport = onExport,
+                onToggleReferenceSpectrum = viewModel::toggleReferenceSpectrum,
+                onCycleReferenceNormalization = {
+                    viewModel.setReferenceNormalizationMode(
+                        when (state.referenceNormalizationMode) {
+                            ReferenceNormalizationMode.PEAK_NORMALIZE -> ReferenceNormalizationMode.AREA_NORMALIZE
+                            ReferenceNormalizationMode.AREA_NORMALIZE -> ReferenceNormalizationMode.FIT_TO_SAMPLE
+                            ReferenceNormalizationMode.FIT_TO_SAMPLE -> ReferenceNormalizationMode.PEAK_NORMALIZE
+                        }
+                    )
+                },
                 onMoveSelection = viewModel::moveSelection,
                 onSelectSample = viewModel::selectSample,
                 modifier = Modifier
@@ -179,6 +223,8 @@ private fun ControlPanel(
     isLandscape: Boolean,
     onOpenFile: () -> Unit,
     onExport: () -> Unit,
+    onToggleReferenceSpectrum: (String) -> Unit,
+    onCycleReferenceNormalization: () -> Unit,
     onMoveSelection: (Int) -> Unit,
     onSelectSample: (Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -195,7 +241,13 @@ private fun ControlPanel(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                PanelHeader(state, onOpenFile, onExport)
+                PanelHeader(
+                    state = state,
+                    onOpenFile = onOpenFile,
+                    onExport = onExport,
+                    onToggleReferenceSpectrum = onToggleReferenceSpectrum,
+                    onCycleReferenceNormalization = onCycleReferenceNormalization,
+                )
                 PanelMessages(state)
                 SampleList(
                     visibleMeasurements = visibleMeasurements,
@@ -212,7 +264,13 @@ private fun ControlPanel(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                PanelHeader(state, onOpenFile, onExport)
+                PanelHeader(
+                    state = state,
+                    onOpenFile = onOpenFile,
+                    onExport = onExport,
+                    onToggleReferenceSpectrum = onToggleReferenceSpectrum,
+                    onCycleReferenceNormalization = onCycleReferenceNormalization,
+                )
                 PanelMessages(state)
                 SampleList(
                     visibleMeasurements = visibleMeasurements,
@@ -233,7 +291,11 @@ private fun PanelHeader(
     state: ViewerUiState,
     onOpenFile: () -> Unit,
     onExport: () -> Unit,
+    onToggleReferenceSpectrum: (String) -> Unit,
+    onCycleReferenceNormalization: () -> Unit,
 ) {
+    var showReferencePicker by remember { mutableStateOf(false) }
+
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = onOpenFile, modifier = Modifier.weight(1f)) {
@@ -248,11 +310,48 @@ private fun PanelHeader(
             }
         }
 
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = { showReferencePicker = true },
+                modifier = Modifier.weight(1f),
+                enabled = state.referenceSpectra.isNotEmpty()
+            ) {
+                Text("References")
+            }
+            Button(
+                onClick = onCycleReferenceNormalization,
+                modifier = Modifier.weight(1f),
+                enabled = state.referenceSpectra.isNotEmpty()
+            ) {
+                Text(state.referenceNormalizationMode.label, maxLines = 2)
+            }
+        }
+
+        if (state.selectedReferenceIds.isNotEmpty()) {
+            Text(
+                text = state.referenceSpectra
+                    .filter { it.id in state.selectedReferenceIds }
+                    .joinToString(", ") { it.shortTitle },
+                color = Color(0xFF4E5B75),
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
         Text(
             text = state.fileName ?: "No file selected",
             color = Color(0xFF4E5B75),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
+        )
+    }
+
+    if (showReferencePicker) {
+        ReferenceSpectrumDialog(
+            spectra = state.referenceSpectra,
+            selectedIds = state.selectedReferenceIds,
+            onToggle = onToggleReferenceSpectrum,
+            onDismiss = { showReferencePicker = false },
         )
     }
 }
@@ -348,6 +447,8 @@ private fun SampleList(
 private fun RightPanel(
     measurement: Measurement?,
     summaryItems: List<Pair<String, String>>,
+    referenceSpectra: List<ReferenceSpectrum>,
+    referenceNormalizationMode: ReferenceNormalizationMode,
     modifier: Modifier = Modifier,
 ) {
     var showReferenceDialog by remember { mutableStateOf(false) }
@@ -380,6 +481,8 @@ private fun RightPanel(
 
                 SpectrumChart(
                     measurement = measurement,
+                    referenceSpectra = referenceSpectra,
+                    referenceNormalizationMode = referenceNormalizationMode,
                     onShowReference = { showReferenceDialog = true },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -406,6 +509,66 @@ private fun SummaryChip(label: String, value: String) {
     }
 }
 
+@Composable
+private fun ReferenceSpectrumDialog(
+    spectra: List<ReferenceSpectrum>,
+    selectedIds: Set<String>,
+    onToggle: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Reference Spectra", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    TextButton(onClick = onDismiss) {
+                        Text("Close")
+                    }
+                }
+
+                LazyColumn(
+                    modifier = Modifier.height(320.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    items(spectra, key = { it.id }) { spectrum ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onToggle(spectrum.id) }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = spectrum.id in selectedIds,
+                                onCheckedChange = { onToggle(spectrum.id) }
+                            )
+                            Column {
+                                Text(spectrum.shortTitle, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    spectrum.title,
+                                    color = Color(0xFF667085),
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 private data class ChartViewport(
     val minX: Double,
     val maxX: Double,
@@ -420,8 +583,11 @@ private data class SelectedChartPoint(
 )
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun SpectrumChart(
     measurement: Measurement,
+    referenceSpectra: List<ReferenceSpectrum>,
+    referenceNormalizationMode: ReferenceNormalizationMode,
     onShowReference: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -445,6 +611,18 @@ private fun SpectrumChart(
         selectedPoint = null
     }
 
+    val normalizedReferences = remember(measurement, referenceSpectra, referenceNormalizationMode) {
+        referenceSpectra.map { spectrum ->
+            spectrum to normalizeReferenceSpectrum(
+                spectrum = spectrum,
+                measurement = measurement,
+                mode = referenceNormalizationMode,
+                minX = baseMinX,
+                maxX = baseMaxX,
+            )
+        }
+    }
+
     Column(modifier = modifier) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -466,6 +644,24 @@ private fun SpectrumChart(
         }
 
         Spacer(Modifier.height(8.dp))
+        if (normalizedReferences.isNotEmpty()) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ReferenceLegendChip(label = measurement.title, color = Color(0xFF0F6CBD), dashed = false)
+                normalizedReferences.forEach { (spectrum, _) ->
+                    ReferenceLegendChip(
+                        label = spectrum.title,
+                        color = referenceColor(spectrum.id),
+                        dashed = true
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
@@ -613,6 +809,29 @@ private fun SpectrumChart(
                 style = Stroke(width = 3f, cap = StrokeCap.Round)
             )
 
+            normalizedReferences.forEach { (spectrum, normalizedPoints) ->
+                val referencePath = Path()
+                normalizedPoints.forEachIndexed { pointIndex, point ->
+                    if (point.first !in viewport.minX..viewport.maxX) return@forEachIndexed
+                    val yValue = point.second.coerceIn(viewport.minY, viewport.maxY)
+                    val xFraction = ((point.first - viewport.minX) / (viewport.maxX - viewport.minX).coerceAtLeast(0.00001)).toFloat()
+                    val yFraction = ((yValue - viewport.minY) / (viewport.maxY - viewport.minY).coerceAtLeast(0.00001)).toFloat()
+                    val x = plotLeft + plotWidth * xFraction
+                    val y = plotBottom - plotHeight * yFraction
+                    if (pointIndex == 0) referencePath.moveTo(x, y) else referencePath.lineTo(x, y)
+                }
+
+                drawPath(
+                    path = referencePath,
+                    color = referenceColor(spectrum.id),
+                    style = Stroke(
+                        width = 3f,
+                        cap = StrokeCap.Round,
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(16f, 10f))
+                    )
+                )
+            }
+
             val textPaint = Paint().apply {
                 color = android.graphics.Color.DKGRAY
                 textSize = 24f
@@ -698,6 +917,112 @@ private fun SpectrumChart(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ReferenceLegendChip(label: String, color: Color, dashed: Boolean) {
+    Row(
+        modifier = Modifier
+            .border(1.dp, Color(0xFFD0D7E2), RoundedCornerShape(12.dp))
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Canvas(modifier = Modifier.size(width = 24.dp, height = 10.dp)) {
+            drawLine(
+                color = color,
+                start = Offset(0f, size.height / 2f),
+                end = Offset(size.width, size.height / 2f),
+                strokeWidth = 4f,
+                pathEffect = if (dashed) PathEffect.dashPathEffect(floatArrayOf(10f, 6f)) else null
+            )
+        }
+        Text(label, fontSize = 12.sp)
+    }
+}
+
+private fun normalizeReferenceSpectrum(
+    spectrum: ReferenceSpectrum,
+    measurement: Measurement,
+    mode: ReferenceNormalizationMode,
+    minX: Double,
+    maxX: Double,
+): List<Pair<Double, Double>> {
+    val rawPoints = spectrum.xValues.zip(spectrum.yValues)
+        .filter { (x, _) -> x in minX..maxX }
+    if (rawPoints.isEmpty()) return emptyList()
+
+    val samplePoints = measurement.xValues.zip(measurement.yValues)
+        .filter { (x, _) -> x in minX..maxX }
+    if (samplePoints.isEmpty()) return rawPoints
+
+    val baselineCorrectedReference = baselineCorrectPoints(rawPoints)
+    val baselineCorrectedSample = baselineCorrectPoints(samplePoints)
+
+    val samplePeak = baselineCorrectedSample.maxOf { it.second }.coerceAtLeast(0.00001)
+    val referencePeak = baselineCorrectedReference.maxOf { it.second }.coerceAtLeast(0.00001)
+    val scaledFactor = when (mode) {
+        ReferenceNormalizationMode.PEAK_NORMALIZE -> samplePeak / referencePeak
+        ReferenceNormalizationMode.AREA_NORMALIZE -> {
+            val sampleArea = trapezoidArea(baselineCorrectedSample).coerceAtLeast(0.00001)
+            val referenceArea = trapezoidArea(baselineCorrectedReference).coerceAtLeast(0.00001)
+            sampleArea / referenceArea
+        }
+        ReferenceNormalizationMode.FIT_TO_SAMPLE -> {
+            var numerator = 0.0
+            var denominator = 0.0
+            baselineCorrectedReference.forEach { (x, refY) ->
+                val sampleY = interpolateSampleY(baselineCorrectedSample, x)
+                if (sampleY != null) {
+                    numerator += sampleY * refY
+                    denominator += refY * refY
+                }
+            }
+            if (denominator <= 0.00001) samplePeak / referencePeak else numerator / denominator
+        }
+    }
+
+    return baselineCorrectedReference.map { (x, y) -> x to (y * scaledFactor) }
+}
+
+private fun baselineCorrectPoints(points: List<Pair<Double, Double>>): List<Pair<Double, Double>> {
+    if (points.isEmpty()) return points
+    val minY = points.minOf { it.second }
+    return points.map { (x, y) -> x to (y - minY).coerceAtLeast(0.0) }
+}
+
+private fun trapezoidArea(points: List<Pair<Double, Double>>): Double {
+    if (points.size < 2) return 0.0
+    return points.zipWithNext().sumOf { (left, right) ->
+        val width = right.first - left.first
+        width * (left.second + right.second) / 2.0
+    }
+}
+
+private fun interpolateSampleY(points: List<Pair<Double, Double>>, x: Double): Double? {
+    if (points.size < 2) return null
+    points.zipWithNext().forEach { (left, right) ->
+        if (x in left.first..right.first) {
+            val span = (right.first - left.first).coerceAtLeast(0.00001)
+            val fraction = (x - left.first) / span
+            return left.second + (right.second - left.second) * fraction
+        }
+    }
+    return null
+}
+
+private fun referenceColor(id: String): Color {
+    return when (id) {
+        "phenol" -> Color(0xFF92400E)
+        "guanidine_hydrochloride_GuHCl" -> Color(0xFF047857)
+        "guanidine_thiocyanate_GTC" -> Color(0xFF7C3AED)
+        "protein_BSA" -> Color(0xFFB42318)
+        "EDTA" -> Color(0xFF0E7490)
+        "ethanol" -> Color(0xFFEA580C)
+        "dsDNA" -> Color(0xFF1D4ED8)
+        "RNA" -> Color(0xFFBE185D)
+        else -> Color(0xFF475467)
     }
 }
 
