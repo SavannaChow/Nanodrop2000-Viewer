@@ -178,7 +178,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         try
         {
-            var result = WorksheetExporter.Export(_worksheet, _currentFilePath);
+            var dialog = new OpenFolderDialog
+            {
+                Title = "Choose export folder",
+                InitialDirectory = Path.GetDirectoryName(_currentFilePath),
+                Multiselect = false
+            };
+
+            if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.FolderName))
+            {
+                StatusMessage = "Export cancelled.";
+                return;
+            }
+
+            var result = WorksheetExporter.Export(_worksheet, _currentFilePath, dialog.FolderName);
             StatusMessage = $"Exported CSV and PDF to {result.OutputDirectory}";
         }
         catch (Exception ex)
@@ -251,11 +264,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (Directory.Exists(path))
             {
-                return ReferenceSpectrumLibrary.LoadFromDirectory(path);
+                return ReferenceSpectrumLibrary.LoadFromDirectory(path)
+                    .Where(spectrum => !IsDisabledReference(spectrum.Id))
+                    .ToArray();
             }
         }
 
-        return ReferenceSpectrumLibrary.LoadFromAssembly(typeof(MainWindowViewModel).Assembly);
+        return ReferenceSpectrumLibrary.LoadFromAssembly(typeof(MainWindowViewModel).Assembly)
+            .Where(spectrum => !IsDisabledReference(spectrum.Id))
+            .ToArray();
+    }
+
+    private static bool IsDisabledReference(string id)
+    {
+        return string.Equals(id, "dsDNA", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(id, "RNA", StringComparison.OrdinalIgnoreCase);
     }
 
     private static IEnumerable<SummaryItem> BuildSummaryItems(Measurement measurement)

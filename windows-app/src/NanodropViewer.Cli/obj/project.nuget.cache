@@ -1,8 +1,13 @@
 {
   "version": 2,
-  "dgSpecHash": "4EekpX3i2aU=",
+  "dgSpecHash": "qGjFqxkZOzc=",
   "success": true,
   "projectFilePath": "C:\\Users\\Savanna\\tbwk-opener\\windows-app\\src\\NanodropViewer.Cli\\NanodropViewer.Cli.csproj",
-  "expectedPackageFiles": [],
+  "expectedPackageFiles": [
+    "C:\\Users\\Savanna\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\8.0.2\\microsoft.extensions.dependencyinjection.abstractions.8.0.2.nupkg.sha512",
+    "C:\\Users\\Savanna\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\8.0.3\\microsoft.extensions.logging.abstractions.8.0.3.nupkg.sha512",
+    "C:\\Users\\Savanna\\.nuget\\packages\\pdfsharp\\6.2.4\\pdfsharp.6.2.4.nupkg.sha512",
+    "C:\\Users\\Savanna\\.nuget\\packages\\system.security.cryptography.pkcs\\8.0.1\\system.security.cryptography.pkcs.8.0.1.nupkg.sha512"
+  ],
   "logs": []
 }

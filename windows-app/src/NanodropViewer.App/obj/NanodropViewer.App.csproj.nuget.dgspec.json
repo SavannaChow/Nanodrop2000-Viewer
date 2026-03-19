@@ -8,7 +8,7 @@
       "version": "1.0.0",
       "restore": {
         "projectUniqueName": "C:\\Users\\Savanna\\tbwk-opener\\windows-app\\src\\NanodropViewer.App\\NanodropViewer.App.csproj",
-        "projectName": "NanodropViewer.App",
+        "projectName": "NanodropViewer",
         "projectPath": "C:\\Users\\Savanna\\tbwk-opener\\windows-app\\src\\NanodropViewer.App\\NanodropViewer.App.csproj",
         "packagesPath": "C:\\Users\\Savanna\\.nuget\\packages\\",
         "outputPath": "C:\\Users\\Savanna\\tbwk-opener\\windows-app\\src\\NanodropViewer.App\\obj\\",
@@ -140,6 +140,10 @@
               "target": "Package",
               "version": "[8.0.25, )",
               "autoReferenced": true
+            },
+            "PDFsharp": {
+              "target": "Package",
+              "version": "[6.2.4, )"
             }
           },
           "imports": [

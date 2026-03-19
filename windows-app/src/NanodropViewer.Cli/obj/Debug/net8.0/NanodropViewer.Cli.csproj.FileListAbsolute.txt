@@ -17,3 +17,16 @@ C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Cli\obj\Debug\net8.0
 C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Cli\obj\Debug\net8.0\NanodropViewer.Cli.pdb
 C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Cli\obj\Debug\net8.0\NanodropViewer.Cli.genruntimeconfig.cache
 C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Cli\obj\Debug\net8.0\ref\NanodropViewer.Cli.dll
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Cli\bin\Debug\net8.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Cli\bin\Debug\net8.0\Microsoft.Extensions.Logging.Abstractions.dll
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Cli\bin\Debug\net8.0\PdfSharp.BarCodes.dll
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Cli\bin\Debug\net8.0\PdfSharp.Charting.dll
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Cli\bin\Debug\net8.0\PdfSharp.Cryptography.dll
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Cli\bin\Debug\net8.0\PdfSharp.Quality.dll
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Cli\bin\Debug\net8.0\PdfSharp.Shared.dll
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Cli\bin\Debug\net8.0\PdfSharp.Snippets.dll
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Cli\bin\Debug\net8.0\PdfSharp.System.dll
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Cli\bin\Debug\net8.0\PdfSharp.WPFonts.dll
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Cli\bin\Debug\net8.0\PdfSharp.dll
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Cli\bin\Debug\net8.0\System.Security.Cryptography.Pkcs.dll
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Cli\bin\Debug\net8.0\runtimes\win\lib\net8.0\System.Security.Cryptography.Pkcs.dll

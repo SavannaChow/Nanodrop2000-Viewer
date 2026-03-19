@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TBWK Converter")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+741d7f2ee3862fa01780e9b143f61b22507655d7")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b58c640291f37d43f65f08e02f2342b56df15b24")]
 [assembly: System.Reflection.AssemblyProductAttribute("Nanodrop Viewer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("NanodropViewer.Core")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

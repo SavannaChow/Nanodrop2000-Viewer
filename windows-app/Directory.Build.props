@@ -4,7 +4,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <Company>TBWK Converter</Company>
-    <Product>Nanodrop Viewer</Product>
+    <Product>NanoDrop 2000 Viewer</Product>
+    <AssemblyTitle>NanoDrop 2000 Viewer</AssemblyTitle>
+    <Description>Windows viewer for NanoDrop TBWK worksheets.</Description>
     <Authors>Savanna</Authors>
     <Version>1.0.0</Version>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>

@@ -6,7 +6,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 if ([string]::IsNullOrWhiteSpace($AppExePath)) {
-    $AppExePath = Join-Path $PSScriptRoot "dist\win-x64\NanodropViewer.App.exe"
+    $AppExePath = Join-Path $PSScriptRoot "dist\win-x64\NanodropViewer.exe"
 }
 
 $appExe = [System.IO.Path]::GetFullPath($AppExePath)

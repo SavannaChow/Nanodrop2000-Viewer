@@ -10,3 +10,4 @@ C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Core\bin\Debug\net8.
 C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Core\bin\Debug\net8.0\NanodropViewer.Core.pdb
 C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Core\obj\Debug\net8.0\refint\NanodropViewer.Core.dll
 C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Core\obj\Debug\net8.0\ref\NanodropViewer.Core.dll
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Core\obj\Debug\net8.0\NanodropViewer.Core.csproj.AssemblyReference.cache

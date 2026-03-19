@@ -48,6 +48,10 @@
               "target": "Package",
               "version": "[8.0.25, )",
               "autoReferenced": true
+            },
+            "PDFsharp": {
+              "target": "Package",
+              "version": "[6.2.4, )"
             }
           },
           "imports": [

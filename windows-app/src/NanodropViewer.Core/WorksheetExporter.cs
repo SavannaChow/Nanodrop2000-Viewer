@@ -1,3 +1,6 @@
+using PdfSharp.Drawing;
+using PdfSharp.Fonts;
+using PdfSharp.Pdf;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -11,6 +14,11 @@ public sealed record ExportResult(string SummaryCsvPath, string SpectrumCsvPath,
 
 public static class WorksheetExporter
 {
+    static WorksheetExporter()
+    {
+        GlobalFontSettings.UseWindowsFontsUnderWindows = true;
+    }
+
     public static ExportResult Export(Worksheet worksheet, string sourceFilePath, string? outputDirectory = null, string? baseName = null)
     {
         var exportDirectory = outputDirectory ?? BuildDefaultExportDirectory(sourceFilePath);
@@ -119,45 +127,46 @@ public static class WorksheetExporter
 
     private static void WriteSpectraPdf(Worksheet worksheet, string path)
     {
-        var document = new SimplePdfDocument(1000, 625);
+        using var document = new PdfDocument();
+        document.Info.Title = "Nanodrop spectra";
 
         foreach (var pair in worksheet.Measurements.Select((measurement, index) => (measurement, index)))
         {
             var page = document.AddPage();
-            DrawMeasurementPdf(page, pair.measurement, pair.index);
+            page.Width = XUnit.FromPoint(1000);
+            page.Height = XUnit.FromPoint(625);
+
+            using var graphics = XGraphics.FromPdfPage(page);
+            DrawMeasurementPdf(graphics, page.Width.Point, page.Height.Point, pair.measurement, pair.index);
         }
 
-        File.WriteAllBytes(path, document.Build());
+        document.Save(path);
     }
 
-    private static void DrawMeasurementPdf(SimplePdfPage page, Measurement measurement, int index)
+    private static void DrawMeasurementPdf(XGraphics graphics, double pageWidth, double pageHeight, Measurement measurement, int index)
     {
         const double plotX = 92;
         const double plotY = 92;
         const double plotWidth = 850;
         const double plotHeight = 420;
 
-        page.SetStrokeRgb(0, 0, 0);
-        page.SetFillRgb(0, 0, 0);
-        page.DrawText($"{index}: {measurement.Title}", 56, 575, 24, bold: true);
-        page.SetFillRgb(0.25, 0.25, 0.25);
-        page.DrawText(
+        var titleFont = new XFont("Arial", 24, XFontStyleEx.Bold);
+        var textFont = new XFont("Arial", 13, XFontStyleEx.Regular);
+        var tickFont = new XFont("Arial", 10, XFontStyleEx.Regular);
+        var blackBrush = XBrushes.Black;
+        var grayBrush = new XSolidBrush(XColor.FromArgb(64, 64, 64));
+
+        graphics.DrawString($"{index}: {measurement.Title}", titleFont, blackBrush, new XPoint(56, 50));
+        graphics.DrawString(
             $"Method: {measurement.Properties.MethodTitle}    Time: {measurement.Time:yyyy-MM-dd HH:mm:ss}",
-            56,
-            548,
-            13);
+            textFont,
+            grayBrush,
+            new XPoint(56, 78));
 
-        page.SetStrokeRgb(0, 0, 0);
-        page.DrawRectangle(plotX, plotY, plotWidth, plotHeight, fill: false);
-
-        page.SetFillRgb(0, 0, 0);
-        page.DrawText(measurement.XLabel, plotX + (plotWidth / 2) - 55, 46, 13);
-        page.DrawText(measurement.YLabel, 32, plotY + plotHeight + 10, 13);
-
-        if (measurement.XValues.Count == 0 || measurement.YValues.Count == 0)
-        {
-            return;
-        }
+        var plotRect = new XRect(plotX, plotY, plotWidth, plotHeight);
+        graphics.DrawRectangle(XPens.Black, plotRect);
+        graphics.DrawString(measurement.XLabel, textFont, blackBrush, new XRect(plotX, 540, plotWidth, 20), XStringFormats.Center);
+        graphics.DrawString(measurement.YLabel, textFont, blackBrush, new XPoint(20, 110));
 
         var visiblePoints = measurement.XValues
             .Zip(measurement.YValues, (x, y) => new SpectrumPoint(x, y))
@@ -178,26 +187,23 @@ public static class WorksheetExporter
 
         var minX = visiblePoints.Min(point => point.X);
         var maxX = visiblePoints.Max(point => point.X);
-        var minY = visiblePoints.Min(point => point.Y);
-        var maxY = visiblePoints.Max(point => point.Y);
-
         if (Math.Abs(maxX - minX) < 0.00001)
         {
             maxX = minX + 1.0;
         }
 
+        var minY = visiblePoints.Min(point => point.Y);
+        var maxY = visiblePoints.Max(point => point.Y);
         var yRange = BuildAxisRange(minY, maxY);
 
-        page.SetStrokeRgb(0.88, 0.88, 0.88);
-        page.SetLineWidth(0.5);
+        var gridPen = new XPen(XColor.FromArgb(224, 224, 224), 0.5);
         for (var tick = 1; tick < 5; tick++)
         {
             var fx = tick / 5.0;
-            page.DrawLine(plotX + (fx * plotWidth), plotY, plotX + (fx * plotWidth), plotY + plotHeight);
-            page.DrawLine(plotX, plotY + (fx * plotHeight), plotX + plotWidth, plotY + (fx * plotHeight));
+            graphics.DrawLine(gridPen, plotX + (fx * plotWidth), plotY, plotX + (fx * plotWidth), plotY + plotHeight);
+            graphics.DrawLine(gridPen, plotX, plotY + (fx * plotHeight), plotX + plotWidth, plotY + (fx * plotHeight));
         }
 
-        page.SetFillRgb(0.25, 0.25, 0.25);
         for (var tick = 0; tick <= 5; tick++)
         {
             var fraction = tick / 5.0;
@@ -205,18 +211,11 @@ public static class WorksheetExporter
             var yValue = yRange.Min + (yRange.Span * fraction);
             var x = plotX + (fraction * plotWidth);
             var y = plotY + (fraction * plotHeight);
-            page.DrawText(xValue.ToString("0.00", CultureInfo.InvariantCulture), x - 14, plotY - 22, 10);
-            page.DrawText(yValue.ToString("0.00", CultureInfo.InvariantCulture), plotX - 54, y - 6, 10);
+            graphics.DrawString(xValue.ToString("0.00", CultureInfo.InvariantCulture), tickFont, grayBrush, new XPoint(x - 14, plotY + plotHeight + 16));
+            graphics.DrawString(yValue.ToString("0.00", CultureInfo.InvariantCulture), tickFont, grayBrush, new XPoint(plotX - 54, y + 3));
         }
 
-        if (yRange.Min < 0 && yRange.Max > 0)
-        {
-            var zeroY = plotY + (((0 - yRange.Min) / yRange.Span) * plotHeight);
-            page.SetStrokeRgb(0.45, 0.45, 0.45);
-            page.SetLineWidth(0.75);
-            page.DrawLine(plotX, zeroY, plotX + plotWidth, zeroY);
-        }
-
+        var markerPen = new XPen(XColor.FromArgb(115, 115, 115), 1) { DashStyle = XDashStyle.Dash };
         foreach (var marker in new[] { 230.0, 260.0, 280.0 })
         {
             if (marker < minX || marker > maxX)
@@ -225,33 +224,32 @@ public static class WorksheetExporter
             }
 
             var x = plotX + (((marker - minX) / (maxX - minX)) * plotWidth);
-            page.SetStrokeRgb(0.45, 0.45, 0.45);
-            page.SetLineWidth(1);
-            page.DrawDashedLine(x, plotY, x, plotY + plotHeight, 6, 6);
-            page.SetFillRgb(0.35, 0.35, 0.35);
-            page.DrawText(marker.ToString("0", CultureInfo.InvariantCulture), x - 10, plotY + 8, 10);
+            graphics.DrawLine(markerPen, x, plotY, x, plotY + plotHeight);
+            graphics.DrawString(marker.ToString("0", CultureInfo.InvariantCulture), tickFont, grayBrush, new XPoint(x - 8, plotY + plotHeight + 30));
         }
 
-        page.SetStrokeRgb(0.06, 0.42, 0.74);
-        page.SetLineWidth(1.3);
-        page.BeginClip(plotX, plotY, plotWidth, plotHeight);
-        page.BeginPath();
-        for (var i = 0; i < visiblePoints.Length; i++)
+        var samplePen = new XPen(XColor.FromArgb(15, 108, 189), 1.5);
+        var path = new XGraphicsPath();
+        var chartPoints = visiblePoints
+            .Select(point => ToPdfPoint(point.X, point.Y, minX, maxX, yRange, plotRect, pageHeight))
+            .ToArray();
+        if (chartPoints.Length > 1)
         {
-            var point = visiblePoints[i];
-            var x = plotX + (((point.X - minX) / (maxX - minX)) * plotWidth);
-            var y = plotY + (((point.Y - yRange.Min) / yRange.Span) * plotHeight);
-            if (i == 0)
-            {
-                page.MoveTo(x, y);
-            }
-            else
-            {
-                page.LineTo(x, y);
-            }
+            path.AddLines(chartPoints);
+            var state = graphics.Save();
+            graphics.IntersectClip(plotRect);
+            graphics.DrawPath(samplePen, path);
+            graphics.Restore(state);
         }
-        page.StrokePath();
-        page.EndClip();
+    }
+
+    private static XPoint ToPdfPoint(double x, double y, double minX, double maxX, AxisRange yRange, XRect plotRect, double pageHeight)
+    {
+        var normalizedX = (x - minX) / Math.Max(maxX - minX, 0.00001);
+        var normalizedY = (y - yRange.Min) / yRange.Span;
+        var canvasX = plotRect.Left + (normalizedX * plotRect.Width);
+        var canvasY = plotRect.Bottom - (normalizedY * plotRect.Height);
+        return new XPoint(canvasX, canvasY);
     }
 
     private static AxisRange BuildAxisRange(double min, double max)
@@ -284,204 +282,5 @@ public static class WorksheetExporter
     private sealed record AxisRange(double Min, double Max)
     {
         public double Span => Math.Max(Max - Min, 0.00001);
-    }
-}
-
-internal sealed class SimplePdfDocument
-{
-    private readonly double _pageWidth;
-    private readonly double _pageHeight;
-    private readonly List<SimplePdfPage> _pages = new();
-
-    public SimplePdfDocument(double pageWidth, double pageHeight)
-    {
-        _pageWidth = pageWidth;
-        _pageHeight = pageHeight;
-    }
-
-    public SimplePdfPage AddPage()
-    {
-        var page = new SimplePdfPage(_pageWidth, _pageHeight);
-        _pages.Add(page);
-        return page;
-    }
-
-    public byte[] Build()
-    {
-        var objects = new List<string>();
-        var pageObjectNumbers = new List<int>();
-        var contentObjectNumbers = new List<int>();
-
-        var fontRegularObjectNumber = AddObject(objects, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
-        var fontBoldObjectNumber = AddObject(objects, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
-
-        foreach (var page in _pages)
-        {
-            var contentBytes = Encoding.ASCII.GetBytes(page.BuildContent());
-            var contentStream =
-                $"<< /Length {contentBytes.Length} >>\nstream\n{Encoding.ASCII.GetString(contentBytes)}\nendstream";
-            contentObjectNumbers.Add(AddObject(objects, contentStream));
-        }
-
-        var pagesObjectNumberPlaceholder = objects.Count + 2;
-        for (var i = 0; i < _pages.Count; i++)
-        {
-            var pageObject =
-                $"<< /Type /Page /Parent {pagesObjectNumberPlaceholder} 0 R /MediaBox [0 0 {FormatNumber(_pageWidth)} {FormatNumber(_pageHeight)}] /Resources << /Font << /F1 {fontRegularObjectNumber} 0 R /F2 {fontBoldObjectNumber} 0 R >> >> /Contents {contentObjectNumbers[i]} 0 R >>";
-            pageObjectNumbers.Add(AddObject(objects, pageObject));
-        }
-
-        var kids = string.Join(" ", pageObjectNumbers.Select(number => $"{number} 0 R"));
-        var pagesObjectNumber = AddObject(objects, $"<< /Type /Pages /Kids [{kids}] /Count {pageObjectNumbers.Count} >>");
-        var catalogObjectNumber = AddObject(objects, $"<< /Type /Catalog /Pages {pagesObjectNumber} 0 R >>");
-
-        using var stream = new MemoryStream();
-        using var writer = new StreamWriter(stream, Encoding.ASCII, leaveOpen: true);
-        writer.NewLine = "\n";
-        writer.Write("%PDF-1.4\n");
-        writer.Flush();
-
-        var offsets = new List<long> { 0 };
-        for (var i = 0; i < objects.Count; i++)
-        {
-            offsets.Add(stream.Position);
-            writer.Write($"{i + 1} 0 obj\n{objects[i]}\nendobj\n");
-            writer.Flush();
-        }
-
-        var xrefPosition = stream.Position;
-        writer.Write($"xref\n0 {objects.Count + 1}\n");
-        writer.Write("0000000000 65535 f \n");
-        foreach (var offset in offsets.Skip(1))
-        {
-            writer.Write($"{offset:D10} 00000 n \n");
-        }
-
-        writer.Write($"trailer\n<< /Size {objects.Count + 1} /Root {catalogObjectNumber} 0 R >>\n");
-        writer.Write($"startxref\n{xrefPosition}\n%%EOF");
-        writer.Flush();
-
-        return stream.ToArray();
-    }
-
-    private static int AddObject(ICollection<string> objects, string body)
-    {
-        objects.Add(body);
-        return objects.Count;
-    }
-
-    private static string FormatNumber(double value)
-    {
-        return value.ToString("0.###", CultureInfo.InvariantCulture);
-    }
-}
-
-internal sealed class SimplePdfPage
-{
-    private readonly double _pageHeight;
-    private readonly StringBuilder _content = new();
-
-    public SimplePdfPage(double pageWidth, double pageHeight)
-    {
-        _pageHeight = pageHeight;
-    }
-
-    public void SetStrokeRgb(double r, double g, double b)
-    {
-        _content.AppendLine($"{FormatNumber(r)} {FormatNumber(g)} {FormatNumber(b)} RG");
-    }
-
-    public void SetFillRgb(double r, double g, double b)
-    {
-        _content.AppendLine($"{FormatNumber(r)} {FormatNumber(g)} {FormatNumber(b)} rg");
-    }
-
-    public void SetLineWidth(double width)
-    {
-        _content.AppendLine($"{FormatNumber(width)} w");
-    }
-
-    public void DrawLine(double x1, double y1, double x2, double y2)
-    {
-        _content.AppendLine($"{FormatX(x1)} {FormatY(y1)} m {FormatX(x2)} {FormatY(y2)} l S");
-    }
-
-    public void DrawDashedLine(double x1, double y1, double x2, double y2, double dash, double gap)
-    {
-        _content.AppendLine($"[{FormatNumber(dash)} {FormatNumber(gap)}] 0 d");
-        DrawLine(x1, y1, x2, y2);
-        _content.AppendLine("[] 0 d");
-    }
-
-    public void DrawRectangle(double x, double y, double width, double height, bool fill)
-    {
-        _content.AppendLine($"{FormatX(x)} {FormatY(y + height)} {FormatNumber(width)} {FormatNumber(height)} re {(fill ? "f" : "S")}");
-    }
-
-    public void DrawText(string text, double x, double y, double fontSize, bool bold = false)
-    {
-        _content.AppendLine("BT");
-        _content.AppendLine($"/{(bold ? "F2" : "F1")} {FormatNumber(fontSize)} Tf");
-        _content.AppendLine($"{FormatX(x)} {FormatY(y)} Td");
-        _content.AppendLine($"({EscapeText(text)}) Tj");
-        _content.AppendLine("ET");
-    }
-
-    public void BeginClip(double x, double y, double width, double height)
-    {
-        _content.AppendLine("q");
-        _content.AppendLine($"{FormatX(x)} {FormatY(y + height)} {FormatNumber(width)} {FormatNumber(height)} re W n");
-    }
-
-    public void EndClip()
-    {
-        _content.AppendLine("Q");
-    }
-
-    public void BeginPath()
-    {
-    }
-
-    public void MoveTo(double x, double y)
-    {
-        _content.AppendLine($"{FormatX(x)} {FormatY(y)} m");
-    }
-
-    public void LineTo(double x, double y)
-    {
-        _content.AppendLine($"{FormatX(x)} {FormatY(y)} l");
-    }
-
-    public void StrokePath()
-    {
-        _content.AppendLine("S");
-    }
-
-    public string BuildContent()
-    {
-        return _content.ToString();
-    }
-
-    private string FormatX(double value)
-    {
-        return FormatNumber(value);
-    }
-
-    private string FormatY(double value)
-    {
-        return FormatNumber(_pageHeight - value);
-    }
-
-    private static string FormatNumber(double value)
-    {
-        return value.ToString("0.###", CultureInfo.InvariantCulture);
-    }
-
-    private static string EscapeText(string value)
-    {
-        return value
-            .Replace("\\", "\\\\", StringComparison.Ordinal)
-            .Replace("(", "\\(", StringComparison.Ordinal)
-            .Replace(")", "\\)", StringComparison.Ordinal);
     }
 }
