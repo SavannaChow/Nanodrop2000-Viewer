@@ -7,6 +7,8 @@ X86_64_BUILD_DIR="$ROOT_DIR/.build/x86_64-apple-macosx/release"
 DIST_DIR="$ROOT_DIR/dist"
 APP_NAME="nanodrop 2000 viewer"
 APP_PATH="$DIST_DIR/$APP_NAME.app"
+DMG_PATH="$DIST_DIR/$APP_NAME.dmg"
+DMG_STAGING_DIR="$DIST_DIR/.dmg-staging"
 EXECUTABLE_NAME="NanodropViewerMac"
 RESOURCE_BUNDLE="TBWKConverter_NanodropViewerMac.bundle"
 SOURCE_ICON="$ROOT_DIR/android-app/icon.png"
@@ -24,7 +26,9 @@ swift build --arch x86_64 -c release --product "$EXECUTABLE_NAME"
 
 mkdir -p "$DIST_DIR"
 rm -rf "$APP_PATH"
+rm -rf "$DMG_STAGING_DIR"
 rm -rf "$ICONSET_DIR" "$ICNS_PATH"
+rm -f "$DMG_PATH"
 
 mkdir -p "$ICONSET_DIR"
 sips -z 16 16 "$SOURCE_ICON" --out "$ICONSET_DIR/icon_16x16.png" >/dev/null
@@ -142,6 +146,18 @@ if [[ -n "${CODESIGN_IDENTITY:-}" ]]; then
   codesign --force --deep --sign "$CODESIGN_IDENTITY" "$APP_PATH"
 fi
 
+mkdir -p "$DMG_STAGING_DIR"
+cp -R "$APP_PATH" "$DMG_STAGING_DIR/$APP_NAME.app"
+ln -s /Applications "$DMG_STAGING_DIR/Applications"
+
+hdiutil create \
+  -volname "$APP_NAME" \
+  -srcfolder "$DMG_STAGING_DIR" \
+  -format UDZO \
+  "$DMG_PATH" >/dev/null
+
 rm -rf "$ICONSET_DIR"
+rm -rf "$DMG_STAGING_DIR"
 
 echo "Built app at: $APP_PATH"
+echo "Built dmg at: $DMG_PATH"
