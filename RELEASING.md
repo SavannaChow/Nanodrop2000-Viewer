@@ -95,8 +95,12 @@ Build on a Windows machine from `main`:
 git checkout main
 git pull
 cd windows-app
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\build-windows-app.ps1
 ```
+
+If PowerShell blocks script execution, use the temporary process-scoped policy above.
+It only affects the current shell session and is the recommended low-risk option.
 
 Default output:
 
