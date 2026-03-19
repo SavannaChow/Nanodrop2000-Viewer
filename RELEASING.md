@@ -63,6 +63,74 @@ Keep release artifacts attached to GitHub Releases instead.
 - Shared `.jdx` files live only under `spectrum_database/`
 - Platform builds should sync or embed from `spectrum_database/`, not maintain hand-edited copies
 
+### Android build and rename
+
+Build the debug APK from `main`:
+
+```bash
+cd android-app
+./gradlew assembleDebug
+```
+
+Default output:
+
+```text
+android-app/app/build/outputs/apk/debug/app-debug.apk
+```
+
+Recommended release asset rename:
+
+```bash
+cp "android-app/app/build/outputs/apk/debug/app-debug.apk" \
+   "android-app/app/build/outputs/apk/debug/nanodrop2000viewer-android-vX.Y.Z.apk"
+```
+
+If you later produce a release build, keep the same versioned naming pattern and avoid uploading the raw `app-debug.apk` filename to GitHub Releases.
+
+### Windows build and rename
+
+Build on a Windows machine from `main`:
+
+```powershell
+git checkout main
+git pull
+cd windows-app
+.\build-windows-app.ps1
+```
+
+Default output:
+
+```text
+windows-app\dist\win-x64\
+```
+
+Recommended variants:
+
+```powershell
+.\build-windows-app.ps1 -SelfContained
+.\build-windows-app.ps1 -SelfContained -SingleFile
+.\build-windows-app.ps1 -SelfContained -SingleFile -ZipOutput
+```
+
+If `-ZipOutput` is used, the script produces:
+
+```text
+windows-app\dist\NanodropViewer-win-x64.zip
+```
+
+Recommended release asset rename:
+
+```powershell
+Copy-Item "windows-app\dist\NanodropViewer-win-x64.zip" `
+          "windows-app\dist\nanodrop2000viewer-windows-vX.Y.Z-x64.zip"
+```
+
+If you publish an installer instead of a zip, use:
+
+```text
+nanodrop2000viewer-windows-vX.Y.Z-installer.exe
+```
+
 ## Suggested release notes structure
 
 - Version summary
