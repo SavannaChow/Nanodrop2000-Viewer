@@ -2,7 +2,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-BUILD_DIR="$ROOT_DIR/.build/release"
+ARM64_BUILD_DIR="$ROOT_DIR/.build/arm64-apple-macosx/release"
+X86_64_BUILD_DIR="$ROOT_DIR/.build/x86_64-apple-macosx/release"
 DIST_DIR="$ROOT_DIR/dist"
 APP_NAME="nanodrop 2000 viewer"
 APP_PATH="$DIST_DIR/$APP_NAME.app"
@@ -18,7 +19,8 @@ BUNDLE_IDENTIFIER="${BUNDLE_IDENTIFIER:-com.savannachow.nanodrop2000viewer}"
 
 cd "$ROOT_DIR"
 "$ROOT_DIR/scripts/sync-spectrum-database.sh"
-swift build -c release --product "$EXECUTABLE_NAME"
+swift build --arch arm64 -c release --product "$EXECUTABLE_NAME"
+swift build --arch x86_64 -c release --product "$EXECUTABLE_NAME"
 
 mkdir -p "$DIST_DIR"
 rm -rf "$APP_PATH"
@@ -114,12 +116,26 @@ cat > "$APP_PATH/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-cp "$BUILD_DIR/$EXECUTABLE_NAME" "$APP_PATH/Contents/MacOS/$EXECUTABLE_NAME"
+if [[ ! -f "$ARM64_BUILD_DIR/$EXECUTABLE_NAME" ]]; then
+  echo "Missing arm64 build output: $ARM64_BUILD_DIR/$EXECUTABLE_NAME" >&2
+  exit 1
+fi
+
+if [[ ! -f "$X86_64_BUILD_DIR/$EXECUTABLE_NAME" ]]; then
+  echo "Missing x86_64 build output: $X86_64_BUILD_DIR/$EXECUTABLE_NAME" >&2
+  exit 1
+fi
+
+lipo -create \
+  "$ARM64_BUILD_DIR/$EXECUTABLE_NAME" \
+  "$X86_64_BUILD_DIR/$EXECUTABLE_NAME" \
+  -output "$APP_PATH/Contents/MacOS/$EXECUTABLE_NAME"
+
 chmod +x "$APP_PATH/Contents/MacOS/$EXECUTABLE_NAME"
 cp "$ICNS_PATH" "$APP_PATH/Contents/Resources/$ICON_NAME.icns"
 
-if [[ -d "$BUILD_DIR/$RESOURCE_BUNDLE" ]]; then
-  cp -R "$BUILD_DIR/$RESOURCE_BUNDLE" "$APP_PATH/Contents/Resources/$RESOURCE_BUNDLE"
+if [[ -d "$ARM64_BUILD_DIR/$RESOURCE_BUNDLE" ]]; then
+  cp -R "$ARM64_BUILD_DIR/$RESOURCE_BUNDLE" "$APP_PATH/Contents/Resources/$RESOURCE_BUNDLE"
 fi
 
 if [[ -n "${CODESIGN_IDENTITY:-}" ]]; then
