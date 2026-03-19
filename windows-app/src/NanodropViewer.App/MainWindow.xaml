@@ -43,9 +43,12 @@
                     </StackPanel>
                 </StackPanel>
 
-                <ListBox ItemsSource="{Binding Samples}"
-                         SelectedItem="{Binding SelectedSample}"
+                <ListBox x:Name="SamplesListBox"
+                         ItemsSource="{Binding Samples}"
+                         SelectedItem="{Binding SelectedSample, Mode=TwoWay}"
                          DisplayMemberPath="DisplayName"
+                         SelectionMode="Extended"
+                         SelectionChanged="HandleSamplesSelectionChanged"
                          Margin="0,12,0,12" />
             </DockPanel>
         </Border>

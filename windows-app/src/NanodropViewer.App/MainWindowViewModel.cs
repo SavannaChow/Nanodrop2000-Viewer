@@ -19,12 +19,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _fileName = "No file selected";
     private string _statusMessage = "Import a TBWK file to begin.";
     private ObservableCollection<SpectrumSeriesItem> _plotSeries = new();
+    private readonly ObservableCollection<SampleItem> _selectedSamples = new();
     private SampleItem? _selectedSample;
     private ReferenceNormalizationMode _selectedNormalizationMode = ReferenceNormalizationMode.PeakNormalize;
     private string? _currentFilePath;
 
     public MainWindowViewModel()
     {
+        SelectedSamples = new ReadOnlyObservableCollection<SampleItem>(_selectedSamples);
         ImportCommand = new RelayCommand(ImportFile);
         ExportCommand = new RelayCommand(ExportFiles, () => HasWorksheet);
         PreviousCommand = new RelayCommand(() => MoveSelection(-1), () => CanMovePrevious);
@@ -43,6 +45,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public ObservableCollection<SampleItem> Samples { get; } = new();
+    public ReadOnlyObservableCollection<SampleItem> SelectedSamples { get; }
     public ObservableCollection<SummaryItem> SummaryItems { get; } = new();
     public ObservableCollection<ReferenceOptionItem> ReferenceOptions { get; } = new();
 
@@ -89,6 +92,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     public bool HasWorksheet => _worksheet is not null;
+    public bool HasMultipleSelectedSamples => _selectedSamples.Count > 1;
     public bool CanMovePrevious => SelectedSample is not null && SelectedSample.Index > 0;
     public bool CanMoveNext => SelectedSample is not null && _worksheet is not null && SelectedSample.Index < _worksheet.Measurements.Count - 1;
     public bool HasSelectedReferences => ReferenceOptions.Any(item => item.IsSelected);
@@ -114,6 +118,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _currentFilePath = filePath;
 
         Samples.Clear();
+        _selectedSamples.Clear();
         for (var index = 0; index < worksheet.Measurements.Count; index++)
         {
             Samples.Add(new SampleItem(index, worksheet.Measurements[index]));
@@ -121,8 +126,33 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         FileName = Path.GetFileName(filePath);
         SelectedSample = Samples.FirstOrDefault();
+        UpdateSelectedSamples(SelectedSample is null ? Array.Empty<SampleItem>() : new[] { SelectedSample });
         StatusMessage = $"Loaded {worksheet.Measurements.Count} samples. Reference spectra: {ReferenceOptions.Count}.";
         RaiseCommandStates();
+    }
+
+    public void UpdateSelectedSamples(IReadOnlyList<SampleItem> selectedSamples)
+    {
+        _selectedSamples.Clear();
+        foreach (var sample in selectedSamples.Distinct())
+        {
+            _selectedSamples.Add(sample);
+        }
+
+        if (_selectedSamples.Count == 0 && SelectedSample is not null)
+        {
+            _selectedSamples.Add(SelectedSample);
+        }
+
+        if (_selectedSamples.Count > 0 &&
+            (SelectedSample is null || !_selectedSamples.Contains(SelectedSample)))
+        {
+            _selectedSample = _selectedSamples[0];
+            OnPropertyChanged(nameof(SelectedSample));
+        }
+
+        RefreshSelectionState();
+        OnPropertyChanged(nameof(HasMultipleSelectedSamples));
     }
 
     public void TryLoadFile(string filePath)
@@ -209,6 +239,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         var nextIndex = Math.Max(0, Math.Min(Samples.Count - 1, SelectedSample.Index + delta));
         SelectedSample = Samples[nextIndex];
+        UpdateSelectedSamples(new[] { SelectedSample });
     }
 
     private void RefreshSelectionState()
@@ -231,10 +262,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SummaryItems.Add(item);
         }
 
-        var plotSeries = new ObservableCollection<SpectrumSeriesItem>
+        var plotSeries = new ObservableCollection<SpectrumSeriesItem>();
+        var samplesToPlot = _selectedSamples.Count == 0 ? new[] { SelectedSample } : _selectedSamples.ToArray();
+        foreach (var sample in samplesToPlot.Distinct())
         {
-            BuildSampleSeries(SelectedSample.Measurement, SelectedSample.Index)
-        };
+            plotSeries.Add(BuildSampleSeries(sample.Measurement, sample.Index));
+        }
 
         AddReferenceSeries(SelectedSample.Measurement, plotSeries);
 
@@ -249,6 +282,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(CanMovePrevious));
         OnPropertyChanged(nameof(CanMoveNext));
         OnPropertyChanged(nameof(HasSelectedReferences));
+        OnPropertyChanged(nameof(HasMultipleSelectedSamples));
     }
 
     private static IReadOnlyList<ReferenceSpectrum> LoadReferenceSpectra()

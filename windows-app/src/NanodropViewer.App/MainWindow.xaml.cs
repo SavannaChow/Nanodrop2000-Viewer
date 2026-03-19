@@ -1,7 +1,9 @@
 using System;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
+using System.Linq;
 
 namespace NanodropViewer.App;
 
@@ -40,6 +42,16 @@ public partial class MainWindow : Window
             WindowStartupLocation = WindowStartupLocation.CenterOwner
         };
         infoWindow.ShowDialog();
+    }
+
+    private void HandleSamplesSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (sender is not ListBox listBox)
+        {
+            return;
+        }
+
+        ViewModel.UpdateSelectedSamples(listBox.SelectedItems.Cast<SampleItem>().ToArray());
     }
 
     private static string? TryGetDroppedFile(IDataObject data)

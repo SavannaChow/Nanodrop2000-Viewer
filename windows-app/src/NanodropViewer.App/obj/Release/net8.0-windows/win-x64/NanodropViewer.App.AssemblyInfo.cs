@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("Windows viewer for NanoDrop TBWK worksheets.")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b58c640291f37d43f65f08e02f2342b56df15b24")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e2b80596553a5ddc9e034d4f2ac154ef82fae8ad")]
 [assembly: System.Reflection.AssemblyProductAttribute("NanoDrop 2000 Viewer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("NanoDrop 2000 Viewer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
