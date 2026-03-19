@@ -51,6 +51,11 @@ public static class ReferenceSpectrumLibrary
 
                     using var reader = new StreamReader(stream);
                     var resourceId = Path.GetFileNameWithoutExtension(name);
+                    const string prefix = "ReferenceSpectra.";
+                    if (resourceId.StartsWith(prefix, StringComparison.Ordinal))
+                    {
+                        resourceId = resourceId[prefix.Length..];
+                    }
                     return JcampDxParser.Parse(reader.ReadToEnd(), resourceId);
                 }
                 catch
