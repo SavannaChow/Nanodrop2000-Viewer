@@ -16,11 +16,18 @@ https://www.thermofisher.com/tw/zt/home/industrial/spectroscopy-elemental-isotop
 
 這個程式提供基本的nanodrop2000原廠控制軟體產生的twbk檔案預覽，你可以在macOS, Android平板或是手機、Windows10以上的電腦載入檔案看你的頻譜圖，而且也同時提供匯出為PDF功能
 
+我只在我的macOS Tahoe 26、Android 16平板、手機，還有Windows 10上面測試過可以運行，但不敢保證所有裝置都能跑。
+
 目前提供：
 
 - macOS 原生版本(Universal binary)
 - Android 原生版本
 - Windows 原生版本
+
+你只要點選nanodrop產生的twbk檔案就能看到你的spectrum頻譜圖，如果直接點檔案不會自動開啟，那就用程式內的Import功能就能載入檔案
+
+程式同時提供Export功能，可以把吸光值、濃度等資訊輸出為CSV檔案方便你後面分析
+
 
 ## 功能特色
 
