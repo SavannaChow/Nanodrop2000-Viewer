@@ -18,6 +18,8 @@ https://www.thermofisher.com/tw/zt/home/industrial/spectroscopy-elemental-isotop
 
 我只在我的macOS Tahoe 26、Android 16平板、手機，還有Windows 10上面測試過可以運行，但不敢保證所有裝置都能跑。
 
+iPad、iPhone抱歉目前還沒有支援，因為iOS本身限制很多，要能夠上架還得付Apple一筆錢(約台幣 3,000 左右)，考量這台機器用的人很少，搞不好每年繳3000元Apple Developer還不夠XD
+
 目前提供：
 
 - macOS 原生版本(Universal binary)
