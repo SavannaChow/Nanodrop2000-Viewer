@@ -1,119 +1,170 @@
 # nanodrop 2000 viewer
 
-Cross-platform NanoDrop `.tbwk` tooling with three platform targets in one repository:
+這是一個跨平台工具，用來開啟、檢視、比對與匯出 NanoDrop 2000 軟體產生的 `.tbwk` / `.twbk` 檔案。
 
-- macOS app and Swift core
-- Android app
-- Windows-native rewrite
+目前提供：
 
-`main` is the integrated release branch.
+- macOS 原生版本
+- Android 原生版本
+- Windows 原生版本
 
-## Branch model
+## 功能特色
 
-Primary platform branches:
+本專案用於 NanoDrop 2000 測量結果的讀取與分析，主要功能包括：
 
-- `macos`
-- `android`
-- `windows`
+- 可直接開啟 `.tbwk` / `.twbk` 檔案
+- 可讀取每個樣本的吸光光譜資料，包括 x 軸與 y 軸數值
+- 可顯示量測摘要資料，例如：
+  - Sample
+  - Nucleic Acid
+  - A260
+  - A280
+  - 260/280
+  - 260/230
+  - Time
+- 光譜圖固定顯示於 `220-350 nm`
+- 在 `230`、`260`、`280 nm` 加上參考虛線，方便判讀 peak 是否偏移
+- 支援 reference spectrum 疊圖比較
+- 支援多種 reference normalization 模式：
+  - Peak Normalize
+  - Area Normalize
+  - Fit To Sample
+- 可匯出：
+  - summary CSV
+  - spectrum CSV
+  - spectra PDF
 
-Release branch:
+## 安裝方式
 
-- `main`
+請至 GitHub Releases 下載對應平台版本：
 
-Work can happen on the platform branches first, then be integrated into `main` for tagged releases such as:
+- macOS：下載 `.dmg`
+- Android：下載 `.apk`
+- Windows：下載 `.zip` 或 installer
 
-- `v1.0.0`
-- `v1.1.0`
+## 使用方式
 
-## Repo layout
+一般使用流程如下：
 
-- `Sources/`
-  Swift sources for the macOS app, Swift core, and CLI.
-- `android-app/`
-  Android app that parses `.tbwk` directly on-device.
-- `windows-app/`
-  Windows-native rewrite in C# and WPF.
-- `spectrum_database/`
-  Shared reference spectra source files used by all platforms.
-- `scripts/`
-  Build, packaging, and sync scripts.
-- `examples/`
-  Sample `.tbwk` files for testing.
-- `tests/`
-  Swift test target and remaining test fixtures.
-- `RELEASING.md`
-  Release flow and artifact naming rules.
+1. 開啟程式
+2. 匯入 `.tbwk` 或 `.twbk` 檔案
+3. 在樣本清單中選擇樣本
+4. 檢視吸光光譜與摘要數值
+5. 視需要疊加 reference spectrum 進行比對
+6. 匯出 CSV 或 PDF
 
-## Platform status
+## 平台說明
 
 ### macOS
 
-The macOS version includes:
+- 原生 Swift app
+- Universal binary，同時支援：
+  - `arm64`（Apple Silicon）
+  - `x86_64`（Intel）
+- 提供 `.dmg` 安裝檔
+- 開啟 `.dmg` 後，可直接把 `nanodrop 2000 viewer.app` 拖曳到 `Applications`
+- 支援 `.tbwk` / `.twbk` 檔案關聯
 
-- direct `.tbwk` parsing
-- sample browsing
-- spectrum plotting
-- reference spectrum overlay
-- CSV/PDF export
-- file association support for `.tbwk` / `.twbk`
-
-Build:
+如果 macOS 顯示無法開啟，通常是因為 Gatekeeper 對未簽名 app 的保護機制。可用以下方式處理：
 
 ```bash
-./scripts/sync-spectrum-database.sh
-swift build
-./scripts/build-nanodrop-viewer-mac-app.sh
+xattr -dr com.apple.quarantine "/Applications/nanodrop 2000 viewer.app"
+```
+
+如果你是直接在下載資料夾測試，也可以改成實際路徑，例如：
+
+```bash
+xattr -dr com.apple.quarantine "$HOME/Downloads/nanodrop 2000 viewer.app"
 ```
 
 ### Android
 
-The Android version includes:
+- 原生 Android app
+- 支援橫向與直向版面
+- 可直接在裝置上解析 `.tbwk`
+- 可匯出到裝置文件資料夾
+- 支援 `.tbwk` / `.twbk` 檔案關聯
 
-- direct `.tbwk` parsing in Kotlin
-- sample browsing
-- portrait and landscape layouts
-- spectrum plotting
-- reference spectrum overlay
-- CSV/PDF export
-- Android file association support for `.tbwk` / `.twbk`
+Android 安裝 `.apk` 時，系統可能會提示「不明來源應用程式」或阻擋安裝。這是 Android 的正常安全機制。只要在安裝時允許目前使用的瀏覽器或檔案管理器安裝未知應用程式即可。
 
-Build:
+### Windows
+
+- 原生 C# / WPF app
+- 可直接讀取 `.tbwk`
+- 支援 reference spectrum database
+- 支援 Windows 檔案關聯
+
+Windows 第一次執行未簽名程式時，可能會出現 SmartScreen 警告。這是 Windows 的正常保護機制。若你是從本專案 GitHub Releases 下載，可選擇：
+
+1. 點選 `More info`
+2. 再點選 `Run anyway`
+
+若是 `.zip` 檔下載後被標記，也可以先在檔案內容中解除封鎖：
+
+1. 右鍵檔案
+2. 點選 `內容`
+3. 勾選 `解除封鎖`（如果有出現）
+4. 再解壓縮執行
+
+## Reference spectrum database
+
+本專案使用共用的 [spectrum_database](/Users/savannachow/Github/tbwk-opener/spectrum_database) 作為 reference spectra 資料來源，目前可支援例如：
+
+- DNA
+- RNA
+- Phenol
+- Guanidine HCl
+- Guanidine thiocyanate
+- EDTA
+- Ethanol
+- Protein (BSA)
+
+這些 reference spectrum 可與實際量測樣本疊圖比較。
+
+## 專案結構
+
+- [Sources](/Users/savannachow/Github/tbwk-opener/Sources)
+  macOS app、Swift core 與 CLI 原始碼
+- [android-app](/Users/savannachow/Github/tbwk-opener/android-app)
+  Android app 原始碼
+- [windows-app](/Users/savannachow/Github/tbwk-opener/windows-app)
+  Windows app 原始碼
+- [spectrum_database](/Users/savannachow/Github/tbwk-opener/spectrum_database)
+  三個平台共用的 reference spectrum database
+- [scripts](/Users/savannachow/Github/tbwk-opener/scripts)
+  建置、打包與同步腳本
+- [examples](/Users/savannachow/Github/tbwk-opener/examples)
+  範例 `.tbwk` 檔案
+- [tests](/Users/savannachow/Github/tbwk-opener/tests)
+  測試與測試資料
+
+## 建置方式
+
+### macOS
+
+```bash
+./scripts/build-nanodrop-viewer-mac-app.sh
+```
+
+### Android
 
 ```bash
 cd android-app
 ./gradlew assembleDebug
 ```
 
-The Android build syncs `../spectrum_database/*.jdx` into generated assets automatically.
-
 ### Windows
 
-The Windows version is a Windows-native rewrite:
+請在 Windows 電腦上執行：
 
-- C# `tbwk` parser
-- C# `jdx` parser and normalization logic
-- WPF desktop app structure
-- Windows-specific packaging and file-association scripts
-
-On non-Windows machines, the cross-platform parser can be smoke-tested with:
-
-```bash
-dotnet build windows-app/src/NanodropViewer.Cli/NanodropViewer.Cli.csproj
-dotnet windows-app/src/NanodropViewer.Cli/bin/Debug/net8.0/NanodropViewer.Cli.dll examples/nanodrop-dna-measurements-01.twbk spectrum_database
+```powershell
+cd windows-app
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\build-windows-app.ps1 -SelfContained -SingleFile -ZipOutput
 ```
 
-The WPF app itself should be built on Windows.
+## Release
 
-## Release/build policy
+正式發佈以 `main` branch 為主，相關打包、命名與 release 流程請參考：
 
-Use `main` for all formal releases.
-
-Do not commit generated binaries into `main`.
-Attach built apps/installers to GitHub Releases instead.
-
-See [RELEASING.md](/Users/savannachow/Github/tbwk-opener/RELEASING.md) for:
-
-- release flow
-- tag strategy
-- artifact naming rules
-- release asset guidance
+- [RELEASING.md](/Users/savannachow/Github/tbwk-opener/RELEASING.md)
