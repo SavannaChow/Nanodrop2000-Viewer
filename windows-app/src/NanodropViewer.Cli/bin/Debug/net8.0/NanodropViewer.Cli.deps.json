@@ -1,0 +1,39 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "NanodropViewer.Cli/1.0.0": {
+        "dependencies": {
+          "NanodropViewer.Core": "1.0.0"
+        },
+        "runtime": {
+          "NanodropViewer.Cli.dll": {}
+        }
+      },
+      "NanodropViewer.Core/1.0.0": {
+        "runtime": {
+          "NanodropViewer.Core.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "NanodropViewer.Cli/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "NanodropViewer.Core/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

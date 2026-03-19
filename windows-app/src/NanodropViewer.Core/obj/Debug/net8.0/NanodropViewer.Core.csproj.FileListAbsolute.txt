@@ -1,0 +1,12 @@
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Core\obj\Debug\net8.0\NanodropViewer.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Core\obj\Debug\net8.0\NanodropViewer.Core.AssemblyInfoInputs.cache
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Core\obj\Debug\net8.0\NanodropViewer.Core.AssemblyInfo.cs
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Core\obj\Debug\net8.0\NanodropViewer.Core.csproj.CoreCompileInputs.cache
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Core\obj\Debug\net8.0\NanodropViewer.Core.sourcelink.json
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Core\obj\Debug\net8.0\NanodropViewer.Core.dll
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Core\obj\Debug\net8.0\NanodropViewer.Core.pdb
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Core\bin\Debug\net8.0\NanodropViewer.Core.deps.json
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Core\bin\Debug\net8.0\NanodropViewer.Core.dll
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Core\bin\Debug\net8.0\NanodropViewer.Core.pdb
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Core\obj\Debug\net8.0\refint\NanodropViewer.Core.dll
+C:\Users\Savanna\tbwk-opener\windows-app\src\NanodropViewer.Core\obj\Debug\net8.0\ref\NanodropViewer.Core.dll

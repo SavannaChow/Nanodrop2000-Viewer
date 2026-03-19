@@ -6,19 +6,27 @@ using NanodropViewer.Core;
 
 if (args.Length == 0)
 {
-    Console.WriteLine("Usage: dotnet run --project windows-app/src/NanodropViewer.Cli -- <file.tbwk> [reference_dir]");
+    Console.WriteLine("Usage: dotnet run --project windows-app/src/NanodropViewer.Cli -- <file.tbwk> [reference_dir] [--export]");
     return;
 }
 
-var tbwkPath = Path.GetFullPath(args[0]);
+var export = args.Any(arg => string.Equals(arg, "--export", StringComparison.OrdinalIgnoreCase));
+var filteredArgs = args.Where(arg => !string.Equals(arg, "--export", StringComparison.OrdinalIgnoreCase)).ToArray();
+if (filteredArgs.Length == 0)
+{
+    Console.WriteLine("TBWK file path is required.");
+    return;
+}
+
+var tbwkPath = Path.GetFullPath(filteredArgs[0]);
 if (!File.Exists(tbwkPath))
 {
     Console.Error.WriteLine($"File not found: {tbwkPath}");
     return;
 }
 
-var referenceDirectory = args.Length > 1
-    ? Path.GetFullPath(args[1])
+var referenceDirectory = filteredArgs.Length > 1
+    ? Path.GetFullPath(filteredArgs[1])
     : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "assets", "reference_spectra"));
 
 var worksheet = TbwkParser.Parse(tbwkPath);
@@ -42,4 +50,12 @@ foreach (var reference in references)
     Console.WriteLine(
         $"{reference.ShortTitle}: peak at {reference.XValues[peakIndex].ToString("0.0", CultureInfo.InvariantCulture)} nm"
     );
+}
+
+if (export)
+{
+    var result = WorksheetExporter.Export(worksheet, tbwkPath);
+    Console.WriteLine($"Exported summary CSV: {result.SummaryCsvPath}");
+    Console.WriteLine($"Exported spectrum CSV: {result.SpectrumCsvPath}");
+    Console.WriteLine($"Exported PDF: {result.PdfPath}");
 }

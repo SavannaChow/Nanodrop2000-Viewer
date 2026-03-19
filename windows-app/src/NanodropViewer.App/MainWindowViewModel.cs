@@ -18,6 +18,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private Worksheet? _worksheet;
     private string _fileName = "No file selected";
     private string _statusMessage = "Import a TBWK file to begin.";
+    private ObservableCollection<SpectrumSeriesItem> _plotSeries = new();
     private SampleItem? _selectedSample;
     private ReferenceNormalizationMode _selectedNormalizationMode = ReferenceNormalizationMode.PeakNormalize;
     private string? _currentFilePath;
@@ -45,7 +46,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ObservableCollection<SummaryItem> SummaryItems { get; } = new();
     public ObservableCollection<ReferenceOptionItem> ReferenceOptions { get; } = new();
     public ObservableCollection<OverlayPreviewItem> OverlayPreviewItems { get; } = new();
-    public ObservableCollection<SpectrumSeriesItem> PlotSeries { get; } = new();
+
+    public ObservableCollection<SpectrumSeriesItem> PlotSeries
+    {
+        get => _plotSeries;
+        private set => SetProperty(ref _plotSeries, value);
+    }
 
     public ICommand ImportCommand { get; }
     public ICommand ExportCommand { get; }
@@ -120,6 +126,32 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RaiseCommandStates();
     }
 
+    public void TryLoadFile(string filePath)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+            {
+                StatusMessage = "TBWK file not found.";
+                return;
+            }
+
+            var extension = Path.GetExtension(filePath);
+            if (!string.Equals(extension, ".tbwk", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(extension, ".twbk", StringComparison.OrdinalIgnoreCase))
+            {
+                StatusMessage = $"Unsupported file type: {extension}";
+                return;
+            }
+
+            LoadFile(filePath);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+        }
+    }
+
     private void ImportFile()
     {
         var dialog = new OpenFileDialog
@@ -134,14 +166,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        try
-        {
-            LoadFile(dialog.FileName);
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = ex.Message;
-        }
+        TryLoadFile(dialog.FileName);
     }
 
     private void ExportFiles()
@@ -154,8 +179,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         try
         {
-            var result = WorksheetExporter.ExportCsv(_worksheet, _currentFilePath);
-            StatusMessage = $"Exported CSV to {result.OutputDirectory}";
+            var result = WorksheetExporter.Export(_worksheet, _currentFilePath);
+            StatusMessage = $"Exported CSV and PDF to {result.OutputDirectory}";
         }
         catch (Exception ex)
         {
@@ -178,10 +203,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         SummaryItems.Clear();
         OverlayPreviewItems.Clear();
-        PlotSeries.Clear();
         if (SelectedSample is null)
         {
+            PlotSeries = new ObservableCollection<SpectrumSeriesItem>();
             PlotPlaceholderText = "Spectrum plot will render here in the Windows UI layer.";
+            OnPropertyChanged(nameof(PlotPlaceholderText));
             RaiseCommandStates();
             OnPropertyChanged(nameof(CanMovePrevious));
             OnPropertyChanged(nameof(CanMoveNext));
@@ -194,11 +220,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SummaryItems.Add(item);
         }
 
-        PlotSeries.Add(BuildSampleSeries(SelectedSample.Measurement, SelectedSample.Index));
-        foreach (var item in BuildOverlayPreviewItems(SelectedSample.Measurement))
+        var plotSeries = new ObservableCollection<SpectrumSeriesItem>
+        {
+            BuildSampleSeries(SelectedSample.Measurement, SelectedSample.Index)
+        };
+
+        foreach (var item in BuildOverlayPreviewItems(SelectedSample.Measurement, plotSeries))
         {
             OverlayPreviewItems.Add(item);
         }
+
+        PlotSeries = plotSeries;
 
         PlotPlaceholderText =
             PlotSeries.Count == 0
@@ -228,7 +260,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             }
         }
 
-        return Array.Empty<ReferenceSpectrum>();
+        return ReferenceSpectrumLibrary.LoadFromAssembly(typeof(MainWindowViewModel).Assembly);
     }
 
     private static IEnumerable<SummaryItem> BuildSummaryItems(Measurement measurement)
@@ -270,7 +302,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private IEnumerable<OverlayPreviewItem> BuildOverlayPreviewItems(Measurement measurement)
+    private IEnumerable<OverlayPreviewItem> BuildOverlayPreviewItems(
+        Measurement measurement,
+        ICollection<SpectrumSeriesItem> plotSeries)
     {
         foreach (var reference in ReferenceOptions.Where(item => item.IsSelected).Select(item => item.Spectrum))
         {
@@ -288,8 +322,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 $"{peak.Y:0.00}"
             );
 
-            PlotSeries.Add(new SpectrumSeriesItem(
-                reference.Title,
+            plotSeries.Add(new SpectrumSeriesItem(
+                reference.ShortTitle,
                 normalized.Select(point => new SpectrumPoint(point.X, point.Y)).ToArray(),
                 ReferenceColor(reference.Id),
                 true,

@@ -1,10 +1,10 @@
 {
   "version": 3,
   "targets": {
-    "net7.0": {
+    "net8.0": {
       "NanodropViewer.Core/1.0.0": {
         "type": "project",
-        "framework": ".NETCoreApp,Version=v7.0",
+        "framework": ".NETCoreApp,Version=v8.0",
         "compile": {
           "bin/placeholder/NanodropViewer.Core.dll": {}
         },
@@ -22,37 +22,37 @@
     }
   },
   "projectFileDependencyGroups": {
-    "net7.0": [
+    "net8.0": [
       "NanodropViewer.Core >= 1.0.0"
     ]
   },
   "packageFolders": {
-    "/Users/savannachow/.nuget/packages/": {}
+    "C:\\Users\\Savanna\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Cli/NanodropViewer.Cli.csproj",
+      "projectUniqueName": "C:\\Users\\Savanna\\tbwk-opener\\windows-app\\src\\NanodropViewer.Cli\\NanodropViewer.Cli.csproj",
       "projectName": "NanodropViewer.Cli",
-      "projectPath": "/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Cli/NanodropViewer.Cli.csproj",
-      "packagesPath": "/Users/savannachow/.nuget/packages/",
-      "outputPath": "/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Cli/obj/",
+      "projectPath": "C:\\Users\\Savanna\\tbwk-opener\\windows-app\\src\\NanodropViewer.Cli\\NanodropViewer.Cli.csproj",
+      "packagesPath": "C:\\Users\\Savanna\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\Savanna\\tbwk-opener\\windows-app\\src\\NanodropViewer.Cli\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/Users/savannachow/.nuget/NuGet/NuGet.Config"
+        "C:\\Users\\Savanna\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
-        "net7.0"
+        "net8.0"
       ],
       "sources": {
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
-        "net7.0": {
-          "targetAlias": "net7.0",
+        "net8.0": {
+          "targetAlias": "net8.0",
           "projectReferences": {
-            "/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Core/NanodropViewer.Core.csproj": {
-              "projectPath": "/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Core/NanodropViewer.Core.csproj"
+            "C:\\Users\\Savanna\\tbwk-opener\\windows-app\\src\\NanodropViewer.Core\\NanodropViewer.Core.csproj": {
+              "projectPath": "C:\\Users\\Savanna\\tbwk-opener\\windows-app\\src\\NanodropViewer.Core\\NanodropViewer.Core.csproj"
             }
           }
         }
@@ -61,11 +61,16 @@
         "warnAsError": [
           "NU1605"
         ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
       }
     },
     "frameworks": {
-      "net7.0": {
-        "targetAlias": "net7.0",
+      "net8.0": {
+        "targetAlias": "net8.0",
         "imports": [
           "net461",
           "net462",
@@ -82,7 +87,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/7.0.304/RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Users\\Savanna\\.dotnet\\sdk\\8.0.419/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

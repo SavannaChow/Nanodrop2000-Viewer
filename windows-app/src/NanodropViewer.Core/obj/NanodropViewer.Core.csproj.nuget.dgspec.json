@@ -1,30 +1,30 @@
 {
   "format": 1,
   "restore": {
-    "/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Core/NanodropViewer.Core.csproj": {}
+    "C:\\Users\\Savanna\\tbwk-opener\\windows-app\\src\\NanodropViewer.Core\\NanodropViewer.Core.csproj": {}
   },
   "projects": {
-    "/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Core/NanodropViewer.Core.csproj": {
+    "C:\\Users\\Savanna\\tbwk-opener\\windows-app\\src\\NanodropViewer.Core\\NanodropViewer.Core.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Core/NanodropViewer.Core.csproj",
+        "projectUniqueName": "C:\\Users\\Savanna\\tbwk-opener\\windows-app\\src\\NanodropViewer.Core\\NanodropViewer.Core.csproj",
         "projectName": "NanodropViewer.Core",
-        "projectPath": "/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Core/NanodropViewer.Core.csproj",
-        "packagesPath": "/Users/savannachow/.nuget/packages/",
-        "outputPath": "/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Core/obj/",
+        "projectPath": "C:\\Users\\Savanna\\tbwk-opener\\windows-app\\src\\NanodropViewer.Core\\NanodropViewer.Core.csproj",
+        "packagesPath": "C:\\Users\\Savanna\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Savanna\\tbwk-opener\\windows-app\\src\\NanodropViewer.Core\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/Users/savannachow/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\Savanna\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
-          "net7.0"
+          "net8.0"
         ],
         "sources": {
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
-          "net7.0": {
-            "targetAlias": "net7.0",
+          "net8.0": {
+            "targetAlias": "net8.0",
             "projectReferences": {}
           }
         },
@@ -32,11 +32,24 @@
           "warnAsError": [
             "NU1605"
           ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
         }
       },
       "frameworks": {
-        "net7.0": {
-          "targetAlias": "net7.0",
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "Microsoft.NET.ILLink.Tasks": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[8.0.25, )",
+              "autoReferenced": true
+            }
+          },
           "imports": [
             "net461",
             "net462",
@@ -48,12 +61,31 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Runtime.win-x64",
+              "version": "[8.0.25, 8.0.25]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Runtime.win-x64",
+              "version": "[8.0.25, 8.0.25]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
+              "version": "[8.0.25, 8.0.25]"
+            }
+          ],
           "frameworkReferences": {
             "Microsoft.NETCore.App": {
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/7.0.304/RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Users\\Savanna\\.dotnet\\sdk\\8.0.419/PortableRuntimeIdentifierGraph.json"
+        }
+      },
+      "runtimes": {
+        "win-x64": {
+          "#import": []
         }
       }
     }

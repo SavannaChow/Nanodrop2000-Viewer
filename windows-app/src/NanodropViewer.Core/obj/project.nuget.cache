@@ -1,8 +1,13 @@
 {
   "version": 2,
-  "dgSpecHash": "pjbRrk9skPjVfxDAaoj5hI7sQFbXh7DFecWR/UH3lO+5Chl3++FTSRY3svVqjq8SKs/6GVF9nsCtrsRoXoGXbw==",
+  "dgSpecHash": "hZufVOouTmY=",
   "success": true,
-  "projectFilePath": "/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Core/NanodropViewer.Core.csproj",
-  "expectedPackageFiles": [],
+  "projectFilePath": "C:\\Users\\Savanna\\tbwk-opener\\windows-app\\src\\NanodropViewer.Core\\NanodropViewer.Core.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Savanna\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.25\\microsoft.net.illink.tasks.8.0.25.nupkg.sha512",
+    "C:\\Users\\Savanna\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\8.0.25\\microsoft.netcore.app.runtime.win-x64.8.0.25.nupkg.sha512",
+    "C:\\Users\\Savanna\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\8.0.25\\microsoft.windowsdesktop.app.runtime.win-x64.8.0.25.nupkg.sha512",
+    "C:\\Users\\Savanna\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\8.0.25\\microsoft.aspnetcore.app.runtime.win-x64.8.0.25.nupkg.sha512"
+  ],
   "logs": []
 }
