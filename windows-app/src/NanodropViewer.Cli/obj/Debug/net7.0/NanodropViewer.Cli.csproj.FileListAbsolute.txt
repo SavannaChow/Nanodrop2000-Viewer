@@ -1,0 +1,17 @@
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Cli/bin/Debug/net7.0/NanodropViewer.Cli.deps.json
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Cli/bin/Debug/net7.0/NanodropViewer.Cli.runtimeconfig.json
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Cli/bin/Debug/net7.0/NanodropViewer.Cli.dll
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Cli/bin/Debug/net7.0/NanodropViewer.Cli.pdb
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Cli/bin/Debug/net7.0/NanodropViewer.Core.dll
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Cli/bin/Debug/net7.0/NanodropViewer.Core.pdb
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Cli/obj/Debug/net7.0/NanodropViewer.Cli.csproj.AssemblyReference.cache
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Cli/obj/Debug/net7.0/NanodropViewer.Cli.GeneratedMSBuildEditorConfig.editorconfig
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Cli/obj/Debug/net7.0/NanodropViewer.Cli.AssemblyInfoInputs.cache
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Cli/obj/Debug/net7.0/NanodropViewer.Cli.AssemblyInfo.cs
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Cli/obj/Debug/net7.0/NanodropViewer.Cli.csproj.CoreCompileInputs.cache
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Cli/obj/Debug/net7.0/NanodropViewer.Cli.csproj.CopyComplete
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Cli/obj/Debug/net7.0/NanodropViewer.Cli.dll
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Cli/obj/Debug/net7.0/refint/NanodropViewer.Cli.dll
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Cli/obj/Debug/net7.0/NanodropViewer.Cli.pdb
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Cli/obj/Debug/net7.0/NanodropViewer.Cli.genruntimeconfig.cache
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Cli/obj/Debug/net7.0/ref/NanodropViewer.Cli.dll

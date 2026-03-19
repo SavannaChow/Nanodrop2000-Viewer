@@ -1,0 +1,12 @@
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Core/obj/Debug/net7.0/NanodropViewer.Core.csproj.AssemblyReference.cache
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Core/obj/Debug/net7.0/NanodropViewer.Core.GeneratedMSBuildEditorConfig.editorconfig
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Core/obj/Debug/net7.0/NanodropViewer.Core.AssemblyInfoInputs.cache
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Core/obj/Debug/net7.0/NanodropViewer.Core.AssemblyInfo.cs
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Core/obj/Debug/net7.0/NanodropViewer.Core.csproj.CoreCompileInputs.cache
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Core/bin/Debug/net7.0/NanodropViewer.Core.deps.json
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Core/bin/Debug/net7.0/NanodropViewer.Core.dll
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Core/bin/Debug/net7.0/NanodropViewer.Core.pdb
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Core/obj/Debug/net7.0/NanodropViewer.Core.dll
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Core/obj/Debug/net7.0/refint/NanodropViewer.Core.dll
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Core/obj/Debug/net7.0/NanodropViewer.Core.pdb
+/Users/savannachow/Github/tbwk-opener/windows-app/src/NanodropViewer.Core/obj/Debug/net7.0/ref/NanodropViewer.Core.dll
