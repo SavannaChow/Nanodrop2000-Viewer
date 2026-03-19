@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Globalization;
 using System.Linq;
 using System.Windows;
@@ -15,7 +16,10 @@ public sealed class SpectrumPlotControl : FrameworkElement
             nameof(Series),
             typeof(IReadOnlyList<SpectrumSeriesItem>),
             typeof(SpectrumPlotControl),
-            new FrameworkPropertyMetadata(Array.Empty<SpectrumSeriesItem>(), FrameworkPropertyMetadataOptions.AffectsRender));
+            new FrameworkPropertyMetadata(
+                Array.Empty<SpectrumSeriesItem>(),
+                FrameworkPropertyMetadataOptions.AffectsRender,
+                HandleSeriesChanged));
 
     private const double MinX = 220.0;
     private const double MaxX = 350.0;
@@ -25,6 +29,30 @@ public sealed class SpectrumPlotControl : FrameworkElement
     {
         get => (IReadOnlyList<SpectrumSeriesItem>)GetValue(SeriesProperty);
         set => SetValue(SeriesProperty, value);
+    }
+
+    private static void HandleSeriesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (SpectrumPlotControl)d;
+
+        if (e.OldValue is INotifyCollectionChanged oldCollection)
+        {
+            oldCollection.CollectionChanged -= control.HandleSeriesCollectionChanged;
+        }
+
+        if (e.NewValue is INotifyCollectionChanged newCollection)
+        {
+            newCollection.CollectionChanged += control.HandleSeriesCollectionChanged;
+        }
+
+        control._selectedPoint = null;
+        control.InvalidateVisual();
+    }
+
+    private void HandleSeriesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        _selectedPoint = null;
+        InvalidateVisual();
     }
 
     protected override void OnRender(DrawingContext drawingContext)
@@ -40,11 +68,12 @@ public sealed class SpectrumPlotControl : FrameworkElement
         }
 
         var plotRect = new Rect(72, 20, Math.Max(bounds.Width - 92, 1), Math.Max(bounds.Height - 68, 1));
+        var yRange = ComputeYRange();
         DrawGrid(drawingContext, plotRect);
-        DrawAxes(drawingContext, plotRect);
-        DrawMarkerLines(drawingContext, plotRect);
-        DrawSeries(drawingContext, plotRect);
-        DrawSelectedPoint(drawingContext, plotRect);
+        DrawAxes(drawingContext, plotRect, yRange);
+        DrawMarkerLines(drawingContext, plotRect, yRange);
+        DrawSeries(drawingContext, plotRect, yRange);
+        DrawSelectedPoint(drawingContext, plotRect, yRange);
     }
 
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
@@ -78,17 +107,16 @@ public sealed class SpectrumPlotControl : FrameworkElement
         }
     }
 
-    private void DrawAxes(DrawingContext dc, Rect plotRect)
+    private void DrawAxes(DrawingContext dc, Rect plotRect, AxisRange yRange)
     {
         var axisPen = new Pen(new SolidColorBrush(Color.FromRgb(0x94, 0xA3, 0xB8)), 1.5);
         dc.DrawRectangle(null, axisPen, plotRect);
 
-        var maxY = ComputeMaxY();
         for (var index = 0; index <= 5; index++)
         {
             var fraction = index / 5.0;
             var xValue = MinX + ((MaxX - MinX) * fraction);
-            var yValue = maxY - (maxY * fraction);
+            var yValue = yRange.Max - (yRange.Span * fraction);
 
             DrawText(dc, $"{xValue:0.0}", new Point(plotRect.Left + (plotRect.Width * fraction) - 12, plotRect.Bottom + 8), 12, Brushes.DimGray);
             DrawText(dc, $"{yValue:0.00}", new Point(8, plotRect.Top + (plotRect.Height * fraction) - 8), 12, Brushes.DimGray);
@@ -97,7 +125,7 @@ public sealed class SpectrumPlotControl : FrameworkElement
         DrawText(dc, "Absorbance (nm)", new Point(plotRect.Left, 2), 14, Brushes.Black, FontWeights.SemiBold);
     }
 
-    private void DrawMarkerLines(DrawingContext dc, Rect plotRect)
+    private void DrawMarkerLines(DrawingContext dc, Rect plotRect, AxisRange yRange)
     {
         var markerPen = new Pen(new SolidColorBrush(Color.FromArgb(0x66, 0x4B, 0x55, 0x63)), 2)
         {
@@ -106,15 +134,16 @@ public sealed class SpectrumPlotControl : FrameworkElement
 
         foreach (var marker in new[] { 230.0, 260.0, 280.0 })
         {
-            var point = ToCanvasPoint(marker, 0, plotRect, ComputeMaxY());
+            var point = ToCanvasPoint(marker, yRange.Min, plotRect, yRange);
             dc.DrawLine(markerPen, new Point(point.X, plotRect.Top), new Point(point.X, plotRect.Bottom));
             DrawText(dc, marker.ToString("0", CultureInfo.InvariantCulture), new Point(point.X - 10, plotRect.Bottom - 20), 12, Brushes.DimGray);
         }
+
     }
 
-    private void DrawSeries(DrawingContext dc, Rect plotRect)
+    private void DrawSeries(DrawingContext dc, Rect plotRect, AxisRange yRange)
     {
-        var maxY = ComputeMaxY();
+        dc.PushClip(new RectangleGeometry(plotRect));
         foreach (var series in Series)
         {
             var visiblePoints = series.Points.Where(point => point.X >= MinX && point.X <= MaxX).ToArray();
@@ -126,11 +155,11 @@ public sealed class SpectrumPlotControl : FrameworkElement
             var geometry = new StreamGeometry();
             using (var context = geometry.Open())
             {
-                var start = ToCanvasPoint(visiblePoints[0].X, visiblePoints[0].Y, plotRect, maxY);
+                var start = ToCanvasPoint(visiblePoints[0].X, visiblePoints[0].Y, plotRect, yRange);
                 context.BeginFigure(start, false, false);
                 for (var index = 1; index < visiblePoints.Length; index++)
                 {
-                    var point = ToCanvasPoint(visiblePoints[index].X, visiblePoints[index].Y, plotRect, maxY);
+                    var point = ToCanvasPoint(visiblePoints[index].X, visiblePoints[index].Y, plotRect, yRange);
                     context.LineTo(point, true, false);
                 }
             }
@@ -148,17 +177,17 @@ public sealed class SpectrumPlotControl : FrameworkElement
 
             dc.DrawGeometry(null, pen, geometry);
         }
+        dc.Pop();
     }
 
-    private void DrawSelectedPoint(DrawingContext dc, Rect plotRect)
+    private void DrawSelectedPoint(DrawingContext dc, Rect plotRect, AxisRange yRange)
     {
         if (_selectedPoint is null)
         {
             return;
         }
 
-        var maxY = ComputeMaxY();
-        var point = ToCanvasPoint(_selectedPoint.X, _selectedPoint.Y, plotRect, maxY);
+        var point = ToCanvasPoint(_selectedPoint.X, _selectedPoint.Y, plotRect, yRange);
         dc.DrawEllipse(Brushes.White, null, point, 8, 8);
         dc.DrawEllipse(new SolidColorBrush(_selectedPoint.Color), null, point, 5, 5);
         DrawText(
@@ -178,7 +207,7 @@ public sealed class SpectrumPlotControl : FrameworkElement
             return null;
         }
 
-        var maxY = ComputeMaxY();
+        var yRange = ComputeYRange();
         SpectrumHitPoint? best = null;
         var bestDistance = 24.0;
 
@@ -186,7 +215,7 @@ public sealed class SpectrumPlotControl : FrameworkElement
         {
             foreach (var point in series.Points.Where(point => point.X >= MinX && point.X <= MaxX))
             {
-                var canvasPoint = ToCanvasPoint(point.X, point.Y, plotRect, maxY);
+                var canvasPoint = ToCanvasPoint(point.X, point.Y, plotRect, yRange);
                 var distance = (canvasPoint - mouse).Length;
                 if (distance >= bestDistance)
                 {
@@ -201,19 +230,38 @@ public sealed class SpectrumPlotControl : FrameworkElement
         return best;
     }
 
-    private Point ToCanvasPoint(double x, double y, Rect plotRect, double maxY)
+    private Point ToCanvasPoint(double x, double y, Rect plotRect, AxisRange yRange)
     {
         var xFraction = (x - MinX) / Math.Max(MaxX - MinX, 0.00001);
-        var yFraction = y / Math.Max(maxY, 0.00001);
+        var yFraction = (y - yRange.Min) / yRange.Span;
         return new Point(
             plotRect.Left + (plotRect.Width * xFraction),
             plotRect.Bottom - (plotRect.Height * yFraction));
     }
 
-    private double ComputeMaxY()
+    private AxisRange ComputeYRange()
     {
-        var max = Series.SelectMany(series => series.Points).DefaultIfEmpty(new SpectrumPoint(220, 0)).Max(point => point.Y);
-        return Math.Max(max + 1.0, 1.0);
+        var visiblePoints = Series
+            .SelectMany(series => series.Points)
+            .Where(point => point.X >= MinX && point.X <= MaxX)
+            .ToArray();
+
+        if (visiblePoints.Length == 0)
+        {
+            return new AxisRange(0, 1.0);
+        }
+
+        var max = visiblePoints.Max(point => point.Y);
+        var paddedMin = 0.0;
+        var padding = Math.Max(0.05, max * 0.08);
+        var paddedMax = max + padding;
+
+        if (Math.Abs(paddedMax - paddedMin) < 0.00001)
+        {
+            paddedMax += 0.5;
+        }
+
+        return new AxisRange(paddedMin, paddedMax);
     }
 
     private static void DrawText(DrawingContext dc, string text, Point origin, double fontSize, Brush brush, FontWeight? fontWeight = null)
@@ -231,4 +279,9 @@ public sealed class SpectrumPlotControl : FrameworkElement
     }
 
     private sealed record SpectrumHitPoint(string Label, double X, double Y, Color Color);
+
+    private sealed record AxisRange(double Min, double Max)
+    {
+        public double Span => Math.Max(Max - Min, 0.00001);
+    }
 }

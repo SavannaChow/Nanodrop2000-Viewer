@@ -1,13 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net7.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <AssemblyName>NanodropViewer.App</AssemblyName>
     <RootNamespace>NanodropViewer.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,8 +14,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\assets\reference_spectra\*.jdx" Link="Assets\reference_spectra\%(Filename)%(Extension)">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <EmbeddedResource Include="..\..\assets\reference_spectra\*.jdx" LogicalName="ReferenceSpectra.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="..\..\..\Sources\NanodropViewerMac\Resources\contaminants_cause.jpg" Link="Resources\contaminants_cause.jpg" />
+    <Resource Include="..\..\..\Sources\NanodropViewerMac\Resources\uv_absorbance_spectra_common_contaminant_with_dna.jpg" Link="Resources\uv_absorbance_spectra_common_contaminant_with_dna.jpg" />
+    <Resource Include="..\..\..\Sources\NanodropViewerMac\Resources\uv_absorbance_spectra_of_phenol_and_trizol_mixed_with_rna.jpg" Link="Resources\uv_absorbance_spectra_of_phenol_and_trizol_mixed_with_rna.jpg" />
+    <Resource Include="..\..\..\Sources\NanodropViewerMac\Resources\spectra_of_contaminated_dna.webp" Link="Resources\spectra_of_contaminated_dna.webp" />
   </ItemGroup>
 </Project>

@@ -7,7 +7,10 @@
         Height="900"
         MinWidth="900"
         MinHeight="600"
-        Background="#FFF5F7FB">
+        Background="#FFF5F7FB"
+        AllowDrop="True"
+        DragOver="HandleDragOver"
+        Drop="HandleDrop">
     <Grid Margin="16">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="320" />
@@ -20,7 +23,8 @@
                 <StackPanel DockPanel.Dock="Top">
                     <StackPanel Orientation="Horizontal">
                         <Button Content="Import" Margin="0,0,8,0" Padding="14,8" Command="{Binding ImportCommand}" />
-                        <Button Content="Export" Padding="14,8" Command="{Binding ExportCommand}" />
+                        <Button Content="Export" Margin="0,0,8,0" Padding="14,8" Command="{Binding ExportCommand}" />
+                        <Button Content="Info" Padding="14,8" Click="HandleInfoClick" />
                     </StackPanel>
                     <TextBlock Margin="0,12,0,0"
                                Text="{Binding FileName}"
@@ -90,43 +94,52 @@
                         CornerRadius="12"
                         Background="#FFF8FAFC"
                         Margin="4,8,4,0">
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="20" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Reference spectra"
+                                       Margin="0,0,0,8"
+                                       FontWeight="SemiBold" />
+
+                            <ItemsControl ItemsSource="{Binding ReferenceOptions}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,12,8"
+                                                Padding="10,8"
+                                                BorderBrush="#FFD0D7E2"
+                                                BorderThickness="1"
+                                                CornerRadius="10"
+                                                Background="White">
+                                            <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                      VerticalAlignment="Center"
+                                                      Content="{Binding ShortTitle}"
+                                                      FontWeight="SemiBold" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2"
+                                    HorizontalAlignment="Right">
                             <TextBlock Text="Normalization"
-                                       VerticalAlignment="Center"
                                        Foreground="#FF667085"
-                                       Margin="0,0,12,0" />
+                                       Margin="0,0,0,8" />
                             <ComboBox Width="180"
                                       SelectedItem="{Binding SelectedNormalizationMode}"
                                       ItemsSource="{Binding NormalizationModes}" />
                         </StackPanel>
-
-                        <TextBlock Text="Reference spectra"
-                                   Margin="0,12,0,8"
-                                   FontWeight="SemiBold" />
-
-                        <ItemsControl ItemsSource="{Binding ReferenceOptions}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Grid Margin="0,0,0,6">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                                                  VerticalAlignment="Top"
-                                                  Margin="0,2,8,0" />
-                                        <StackPanel Grid.Column="1">
-                                            <TextBlock Text="{Binding ShortTitle}" FontWeight="SemiBold" />
-                                            <TextBlock Text="{Binding FullTitle}"
-                                                       Foreground="#FF667085"
-                                                       TextWrapping="Wrap" />
-                                        </StackPanel>
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
+                    </Grid>
                 </Border>
 
                 <Border Grid.Row="3" BorderBrush="#FFD0D7E2" BorderThickness="1" CornerRadius="16" Background="#FFF8FAFC">
