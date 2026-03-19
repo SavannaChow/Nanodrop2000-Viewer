@@ -27,20 +27,20 @@ Work can happen on the platform branches first, then be integrated into `main` f
 
 ## Repo layout
 
-- `Sources/TBWKCore`
-  Swift parser/export core used by the macOS build.
-- `Sources/NanodropViewerMac`
-  SwiftUI macOS app.
-- `Sources/tbwk-convert`
-  Swift command-line entry point.
+- `Sources/`
+  Swift sources for the macOS app, Swift core, and CLI.
 - `android-app/`
   Android app that parses `.tbwk` directly on-device.
 - `windows-app/`
   Windows-native rewrite in C# and WPF.
 - `spectrum_database/`
-  Shared reference spectra source files.
+  Shared reference spectra source files used by all platforms.
 - `scripts/`
-  macOS build and packaging scripts.
+  Build, packaging, and sync scripts.
+- `examples/`
+  Sample `.tbwk` files for testing.
+- `tests/`
+  Swift test target and remaining test fixtures.
 - `RELEASING.md`
   Release flow and artifact naming rules.
 
@@ -60,6 +60,7 @@ The macOS version includes:
 Build:
 
 ```bash
+./scripts/sync-spectrum-database.sh
 swift build
 ./scripts/build-nanodrop-viewer-mac-app.sh
 ```
@@ -83,6 +84,8 @@ cd android-app
 ./gradlew assembleDebug
 ```
 
+The Android build syncs `../spectrum_database/*.jdx` into generated assets automatically.
+
 ### Windows
 
 The Windows version is a Windows-native rewrite:
@@ -96,7 +99,7 @@ On non-Windows machines, the cross-platform parser can be smoke-tested with:
 
 ```bash
 dotnet build windows-app/src/NanodropViewer.Cli/NanodropViewer.Cli.csproj
-dotnet windows-app/src/NanodropViewer.Cli/bin/Debug/net7.0/NanodropViewer.Cli.dll examples/nanodrop-dna-measurements-01.twbk windows-app/assets/reference_spectra
+dotnet windows-app/src/NanodropViewer.Cli/bin/Debug/net8.0/NanodropViewer.Cli.dll examples/nanodrop-dna-measurements-01.twbk spectrum_database
 ```
 
 The WPF app itself should be built on Windows.

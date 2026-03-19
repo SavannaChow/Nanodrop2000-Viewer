@@ -32,7 +32,7 @@ let package = Package(
         .testTarget(
             name: "TBWKCoreTests",
             dependencies: ["TBWKCore"],
-            path: "Tests/TBWKCoreTests"
+            path: "tests/TBWKCoreTests"
         ),
     ]
 )

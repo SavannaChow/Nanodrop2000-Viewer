@@ -60,6 +60,8 @@ Keep release artifacts attached to GitHub Releases instead.
 - macOS build and packaging scripts live under `scripts/`
 - Android builds from `android-app/`
 - Windows builds from `windows-app/`
+- Shared `.jdx` files live only under `spectrum_database/`
+- Platform builds should sync or embed from `spectrum_database/`, not maintain hand-edited copies
 
 ## Suggested release notes structure
 

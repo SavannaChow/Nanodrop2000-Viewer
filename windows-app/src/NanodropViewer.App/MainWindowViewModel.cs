@@ -291,7 +291,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var candidatePaths = new[]
         {
             Path.Combine(baseDir, "Assets", "reference_spectra"),
-            Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "assets", "reference_spectra"))
+            Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "..", "..", "spectrum_database"))
         };
 
         foreach (var path in candidatePaths)

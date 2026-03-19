@@ -4,6 +4,17 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val sharedSpectrumDatabaseDir = rootProject.projectDir.resolve("../spectrum_database")
+val generatedReferenceAssetsDir = layout.buildDirectory.dir("generated/reference_spectra_assets")
+
+val syncReferenceSpectra by tasks.registering(Copy::class) {
+    from(sharedSpectrumDatabaseDir) {
+        include("*.jdx")
+        into("reference_spectra")
+    }
+    into(generatedReferenceAssetsDir)
+}
+
 android {
     namespace = "com.tbwk.android"
     compileSdk = 35
@@ -46,6 +57,12 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    sourceSets.getByName("main").assets.srcDir(generatedReferenceAssetsDir)
+}
+
+tasks.named("preBuild") {
+    dependsOn(syncReferenceSpectra)
 }
 
 dependencies {

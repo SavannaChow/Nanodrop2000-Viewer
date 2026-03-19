@@ -7,7 +7,7 @@ Structure:
 - `src/NanodropViewer.Core`: C# parser and reference spectrum logic
 - `src/NanodropViewer.Cli`: cross-platform CLI smoke-test entry point
 - `src/NanodropViewer.App`: WPF desktop app skeleton for Windows
-- `assets/reference_spectra`: bundled `.jdx` reference spectra
+- `../spectrum_database`: shared `.jdx` reference spectra source
 - `build-windows-app.ps1`: publish helper for Windows desktop builds
 - `register-tbwk-file-association.ps1`: current-user `.tbwk` / `.twbk` file association helper
 
@@ -21,7 +21,7 @@ Notes:
 Smoke-test parser on this machine:
 
 ```bash
-dotnet run --project windows-app/src/NanodropViewer.Cli -- examples/nanodrop-dna-measurements-01.twbk windows-app/assets/reference_spectra
+dotnet run --project windows-app/src/NanodropViewer.Cli -- examples/nanodrop-dna-measurements-01.twbk spectrum_database
 ```
 
 Build the Windows desktop app on a Windows machine with the .NET SDK installed:

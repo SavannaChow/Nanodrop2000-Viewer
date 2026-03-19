@@ -17,6 +17,7 @@ BUILD_NUMBER="${BUILD_NUMBER:-1}"
 BUNDLE_IDENTIFIER="${BUNDLE_IDENTIFIER:-com.savannachow.nanodrop2000viewer}"
 
 cd "$ROOT_DIR"
+"$ROOT_DIR/scripts/sync-spectrum-database.sh"
 swift build -c release --product "$EXECUTABLE_NAME"
 
 mkdir -p "$DIST_DIR"

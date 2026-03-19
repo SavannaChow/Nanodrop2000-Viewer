@@ -25,11 +25,13 @@ enum ReferenceSpectrumLibrary {
         }
 
         let fileManager = FileManager.default
-        let urls = (try? fileManager.contentsOfDirectory(
+        let enumerator = fileManager.enumerator(
             at: resourceURL,
             includingPropertiesForKeys: nil,
             options: [.skipsHiddenFiles]
-        )) ?? []
+        )
+
+        let urls = (enumerator?.allObjects as? [URL]) ?? []
 
         return urls
             .filter { $0.pathExtension.lowercased() == "jdx" }

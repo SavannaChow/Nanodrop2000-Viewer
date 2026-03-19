@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="..\..\assets\reference_spectra\*.jdx" LogicalName="ReferenceSpectra.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\..\spectrum_database\*.jdx" LogicalName="ReferenceSpectra.%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

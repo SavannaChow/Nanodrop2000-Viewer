@@ -27,7 +27,7 @@ if (!File.Exists(tbwkPath))
 
 var referenceDirectory = filteredArgs.Length > 1
     ? Path.GetFullPath(filteredArgs[1])
-    : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "assets", "reference_spectra"));
+    : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "..", "spectrum_database"));
 
 var worksheet = TbwkParser.Parse(tbwkPath);
 Console.WriteLine($"Measurements: {worksheet.Measurements.Count}");

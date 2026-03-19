@@ -4,19 +4,23 @@
 .build/
 .swift-cache/
 android-app/.gradle/
+android-app/.kotlin/
 android-app/build/
 android-app/app/build/
 android-app/local.properties
 windows-app/**/bin/
 windows-app/**/obj/
+windows-app/dist/
 build/
 dist/
+Sources/NanodropViewerMac/Resources/ReferenceSpectra/*.jdx
 **/__pycache__/
 tbwk-opener/
 tbwk_opener.egg-info/
 2026_03_18_Nucleic Acid_summary.csv
 2026_03_18_Nucleic Acid_spectrum.csv
 2026_03_18_Nucleic Acid_spectra.pdf
+2026_03_18_Nucleic Acid.twbk
 *_summary.csv
 *_spectrum.csv
 *_spectra.pdf
