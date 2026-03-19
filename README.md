@@ -1,5 +1,7 @@
 # nanodrop 2000 viewer
 
+
+
 這是一個跨平台工具，用來開啟、檢視、比對與匯出 NanoDrop 2000 產生的 Spectrum `.tbwk` / `.twbk` 檔案。
 
 Nanodrop是一台老古董，原廠Thermo-Fisher大概也不想再管了，但是機器沒壞只好繼續用，只是軟體真的很老舊
