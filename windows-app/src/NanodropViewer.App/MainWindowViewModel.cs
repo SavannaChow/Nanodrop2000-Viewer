@@ -45,7 +45,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ObservableCollection<SampleItem> Samples { get; } = new();
     public ObservableCollection<SummaryItem> SummaryItems { get; } = new();
     public ObservableCollection<ReferenceOptionItem> ReferenceOptions { get; } = new();
-    public ObservableCollection<OverlayPreviewItem> OverlayPreviewItems { get; } = new();
 
     public ObservableCollection<SpectrumSeriesItem> PlotSeries
     {
@@ -202,7 +201,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void RefreshSelectionState()
     {
         SummaryItems.Clear();
-        OverlayPreviewItems.Clear();
         if (SelectedSample is null)
         {
             PlotSeries = new ObservableCollection<SpectrumSeriesItem>();
@@ -225,10 +223,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             BuildSampleSeries(SelectedSample.Measurement, SelectedSample.Index)
         };
 
-        foreach (var item in BuildOverlayPreviewItems(SelectedSample.Measurement, plotSeries))
-        {
-            OverlayPreviewItems.Add(item);
-        }
+        AddReferenceSeries(SelectedSample.Measurement, plotSeries);
 
         PlotSeries = plotSeries;
 
@@ -302,7 +297,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private IEnumerable<OverlayPreviewItem> BuildOverlayPreviewItems(
+    private void AddReferenceSeries(
         Measurement measurement,
         ICollection<SpectrumSeriesItem> plotSeries)
     {
@@ -313,14 +308,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 continue;
             }
-
-            var peak = normalized.OrderByDescending(point => point.Y).First();
-            yield return new OverlayPreviewItem(
-                reference.ShortTitle,
-                reference.Title,
-                $"{peak.X:0.0} nm",
-                $"{peak.Y:0.00}"
-            );
 
             plotSeries.Add(new SpectrumSeriesItem(
                 reference.ShortTitle,
@@ -448,5 +435,3 @@ public sealed class ReferenceOptionItem : INotifyPropertyChanged
         }
     }
 }
-
-public sealed record OverlayPreviewItem(string ShortTitle, string FullTitle, string PeakWavelength, string PeakValue);

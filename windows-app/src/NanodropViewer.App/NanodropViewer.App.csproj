@@ -18,9 +18,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="..\..\..\Sources\NanodropViewerMac\Resources\contaminants_cause.jpg" Link="Resources\contaminants_cause.jpg" />
-    <Resource Include="..\..\..\Sources\NanodropViewerMac\Resources\uv_absorbance_spectra_common_contaminant_with_dna.jpg" Link="Resources\uv_absorbance_spectra_common_contaminant_with_dna.jpg" />
-    <Resource Include="..\..\..\Sources\NanodropViewerMac\Resources\uv_absorbance_spectra_of_phenol_and_trizol_mixed_with_rna.jpg" Link="Resources\uv_absorbance_spectra_of_phenol_and_trizol_mixed_with_rna.jpg" />
-    <Resource Include="..\..\..\Sources\NanodropViewerMac\Resources\spectra_of_contaminated_dna.webp" Link="Resources\spectra_of_contaminated_dna.webp" />
+    <Resource Include="..\..\contaminants\Contaminants-cause.jpg" Link="Resources\contaminants_cause.jpg" />
+    <Resource Include="..\..\contaminants\UV-absorbance_spectra_common_contaminant_with_DNA.jpg" Link="Resources\uv_absorbance_spectra_common_contaminant_with_dna.jpg" />
+    <Resource Include="..\..\contaminants\UV-absorbance spectra of phenol and TRIzol mixed with RNA.jpg" Link="Resources\uv_absorbance_spectra_of_phenol_and_trizol_mixed_with_rna.jpg" />
+    <Resource Include="..\..\contaminants\Spectra of contaminated DNA.jpg" Link="Resources\spectra_of_contaminated_dna.jpg" />
   </ItemGroup>
 </Project>

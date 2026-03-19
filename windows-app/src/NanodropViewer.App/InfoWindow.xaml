@@ -82,7 +82,7 @@
                        Source="Resources/uv_absorbance_spectra_of_phenol_and_trizol_mixed_with_rna.jpg" />
                 <Image Margin="0,16,0,0"
                        Stretch="Uniform"
-                       Source="Resources/spectra_of_contaminated_dna.webp" />
+                       Source="Resources/spectra_of_contaminated_dna.jpg" />
             </StackPanel>
         </ScrollViewer>
 
