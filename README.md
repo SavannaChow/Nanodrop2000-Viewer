@@ -115,8 +115,6 @@ Windows 第一次執行未簽名程式時，可能會出現 SmartScreen 警告�
 
 本專案使用共用的 [spectrum_database](/Users/savannachow/Github/tbwk-opener/spectrum_database) 作為 reference spectra 資料來源，目前可支援例如：
 
-- DNA
-- RNA
 - Phenol
 - Guanidine HCl
 - Guanidine thiocyanate
@@ -124,7 +122,8 @@ Windows 第一次執行未簽名程式時，可能會出現 SmartScreen 警告�
 - Ethanol
 - Protein (BSA)
 
-這些 reference spectrum 可與實際量測樣本疊圖比較。
+這些 reference spectrum 可與實際量測樣本疊圖比較，不過目前建議當作外加的功能，因為這些污染物的spectrum尚未建立完成。
+如果想知道污染物來源，可以按下Info的按鈕，裡面有一些說明。
 
 ## 專案結構
 
