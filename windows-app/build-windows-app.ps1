@@ -16,7 +16,17 @@ if (Test-Path $publishDir) {
     Remove-Item $publishDir -Recurse -Force
 }
 
-$arguments = @(
+$restoreArguments = @(
+    "restore"
+    $project
+    "-r"
+    $Runtime
+)
+
+$restoreArguments += "-p:DebugType=None"
+$restoreArguments += "-p:DebugSymbols=false"
+
+$publishArguments = @(
     "publish"
     $project
     "-c"
@@ -27,27 +37,33 @@ $arguments = @(
     $publishDir
 )
 
+$arguments = @(
+    $publishArguments
+)
+
 if ($SelfContained) {
-    $arguments += "--self-contained"
-    $arguments += "true"
+    $publishArguments += "--self-contained"
+    $publishArguments += "true"
 } else {
-    $arguments += "--self-contained"
-    $arguments += "false"
+    $publishArguments += "--self-contained"
+    $publishArguments += "false"
 }
 
 if ($SingleFile) {
-    $arguments += "-p:PublishSingleFile=true"
+    $publishArguments += "-p:PublishSingleFile=true"
 }
 
 if ($SelfContained -and $SingleFile) {
-    $arguments += "-p:IncludeNativeLibrariesForSelfExtract=true"
+    $publishArguments += "-p:IncludeNativeLibrariesForSelfExtract=true"
 }
 
-$arguments += "-p:DebugType=None"
-$arguments += "-p:DebugSymbols=false"
+$publishArguments += "-p:DebugType=None"
+$publishArguments += "-p:DebugSymbols=false"
 
+Write-Host "Restoring NanodropViewer.App for $Runtime"
+& $dotnet @restoreArguments
 Write-Host "Publishing NanodropViewer.App to $publishDir"
-& $dotnet @arguments
+& $dotnet @publishArguments
 
 Write-Host ""
 Write-Host "Build completed."
