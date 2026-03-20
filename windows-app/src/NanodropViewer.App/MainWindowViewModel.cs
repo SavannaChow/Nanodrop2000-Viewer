@@ -35,6 +35,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ExportCommand = new RelayCommand(ExportFiles, () => HasWorksheet);
         CheckUpdatesCommand = new RelayCommand(() => _ = CheckForUpdatesAsync(true));
         DownloadUpdateCommand = new RelayCommand(DownloadUpdate, () => AvailableUpdate is not null);
+        ResetReferenceSelectionCommand = new RelayCommand(ResetReferenceSelection, () => HasSelectedReferences);
         PreviousCommand = new RelayCommand(() => MoveSelection(-1), () => CanMovePrevious);
         NextCommand = new RelayCommand(() => MoveSelection(1), () => CanMoveNext);
 
@@ -66,6 +67,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand ExportCommand { get; }
     public ICommand CheckUpdatesCommand { get; }
     public ICommand DownloadUpdateCommand { get; }
+    public ICommand ResetReferenceSelectionCommand { get; }
     public ICommand PreviousCommand { get; }
     public ICommand NextCommand { get; }
 
@@ -321,6 +323,21 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         GitHubUpdateService.OpenDownload(AvailableUpdate.DownloadUrl);
     }
 
+    private void ResetReferenceSelection()
+    {
+        var changed = false;
+        foreach (var option in ReferenceOptions.Where(option => option.IsSelected))
+        {
+            option.IsSelected = false;
+            changed = true;
+        }
+
+        if (changed)
+        {
+            RefreshSelectionState();
+        }
+    }
+
     private void MoveSelection(int delta)
     {
         if (SelectedSample is null)
@@ -509,6 +526,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void RaiseCommandStates()
     {
         ((RelayCommand)ExportCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)ResetReferenceSelectionCommand).RaiseCanExecuteChanged();
         ((RelayCommand)PreviousCommand).RaiseCanExecuteChanged();
         ((RelayCommand)NextCommand).RaiseCanExecuteChanged();
     }

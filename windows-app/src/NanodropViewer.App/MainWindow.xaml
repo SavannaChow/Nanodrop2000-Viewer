@@ -179,6 +179,10 @@
                             <ComboBox Width="180"
                                       SelectedItem="{Binding SelectedNormalizationMode}"
                                       ItemsSource="{Binding NormalizationModes}" />
+                            <Button Content="Reset Selection"
+                                    Margin="0,10,0,0"
+                                    Padding="12,6"
+                                    Command="{Binding ResetReferenceSelectionCommand}" />
                         </StackPanel>
                     </Grid>
                 </Border>

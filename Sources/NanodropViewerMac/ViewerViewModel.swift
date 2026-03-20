@@ -179,6 +179,10 @@ final class ViewerViewModel: ObservableObject {
         }
     }
 
+    func clearSelectedReferenceSpectra() {
+        selectedReferenceIDs.removeAll()
+    }
+
     func checkForUpdatesIfNeeded() {
         guard !hasCheckedForUpdates else { return }
         hasCheckedForUpdates = true

@@ -269,7 +269,8 @@ struct ViewerRootView: View {
                     selections: viewModel.selectedMeasurements,
                     referenceSpectra: viewModel.selectedReferenceSpectra,
                     referenceNormalizationMode: viewModel.referenceNormalizationMode,
-                    onShowInfo: { viewModel.isShowingInfo = true }
+                    onShowInfo: { viewModel.isShowingInfo = true },
+                    onResetReferenceSelection: { viewModel.clearSelectedReferenceSpectra() }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -339,6 +340,7 @@ private struct SpectrumChartView: View {
     let referenceSpectra: [ReferenceSpectrum]
     let referenceNormalizationMode: ReferenceNormalizationMode
     let onShowInfo: () -> Void
+    let onResetReferenceSelection: () -> Void
 
     @State private var selectedPoint: ChartSelection?
 
@@ -365,7 +367,10 @@ private struct SpectrumChartView: View {
                         .foregroundStyle(.secondary)
                 }
                 Button("Info", action: onShowInfo)
-                Button("Reset Selection") { selectedPoint = nil }
+                Button("Reset Selection") {
+                    selectedPoint = nil
+                    onResetReferenceSelection()
+                }
             }
 
             let showSampleLegendInChart = selections.count <= 1
@@ -696,6 +701,8 @@ private extension Color {
 }
 
 private struct ViewerInfoSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -703,6 +710,14 @@ private struct ViewerInfoSheet: View {
                     Text("NanoDrop 說明")
                         .font(.title.bold())
                     Spacer()
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Close")
                 }
 
                 Group {

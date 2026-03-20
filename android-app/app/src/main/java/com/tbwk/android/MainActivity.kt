@@ -566,8 +566,47 @@ private fun RightPanel(
         shape = RoundedCornerShape(24.dp)
     ) {
         if (measurement == null) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Import a TBWK file to view spectra.", color = Color(0xFF4E5B75))
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                if (showTopActions) {
+                    BoxWithConstraints {
+                        val buttonFontSize = when {
+                            maxWidth < 320.dp -> 9.sp
+                            maxWidth < 420.dp -> 10.sp
+                            else -> 12.sp
+                        }
+                        val buttonPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = onOpenFile,
+                                modifier = Modifier.weight(1f).height(40.dp),
+                                contentPadding = buttonPadding,
+                            ) {
+                                ActionButtonText("Import", buttonFontSize)
+                            }
+                            Button(
+                                onClick = onExport,
+                                modifier = Modifier.weight(1f).height(40.dp),
+                                enabled = false,
+                                contentPadding = buttonPadding,
+                            ) {
+                                ActionButtonText("Export", buttonFontSize)
+                            }
+                        }
+                    }
+                }
+
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Import a TBWK file to view spectra.", color = Color(0xFF4E5B75))
+                }
             }
         } else {
             Column(
