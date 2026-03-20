@@ -18,6 +18,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -27,6 +28,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -143,6 +145,7 @@ private fun ViewerScreen(
     val selectedReferenceSpectra = viewModel.selectedReferenceSpectra()
     val visibleMeasurements = viewModel.visibleMeasurements()
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    var portraitTopFraction by remember { mutableStateOf(0.52f) }
 
     LaunchedEffect(Unit) {
         viewModel.checkForUpdatesIfNeeded()
@@ -189,44 +192,82 @@ private fun ViewerScreen(
             )
         }
     } else {
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(16.dp)
         ) {
-            RightPanel(
-                measurement = measurement,
-                summaryItems = viewModel.summaryItems(),
-                referenceSpectra = selectedReferenceSpectra,
-                referenceNormalizationMode = state.referenceNormalizationMode,
-                modifier = Modifier.weight(1f)
-            )
+            val totalHeightPx = with(LocalDensity.current) { maxHeight.toPx() }
+            val dividerHeight = 12.dp
+            val dividerHeightPx = with(LocalDensity.current) { dividerHeight.toPx() }
+            val minTopPx = with(LocalDensity.current) { 220.dp.toPx() }
+            val minBottomPx = with(LocalDensity.current) { 220.dp.toPx() }
+            val availableHeight = (totalHeightPx - dividerHeightPx).coerceAtLeast(minTopPx + minBottomPx)
+            val topHeightPx = (availableHeight * portraitTopFraction).coerceIn(minTopPx, availableHeight - minBottomPx)
+            val bottomHeightPx = (availableHeight - topHeightPx).coerceAtLeast(minBottomPx)
 
-            ControlPanel(
-                state = state,
-                visibleMeasurements = visibleMeasurements,
-                isLandscape = false,
-                onOpenFile = onOpenFile,
-                onExport = onExport,
-                updateButtonLabel = viewModel.updateButtonLabel(),
-                onCheckUpdates = { viewModel.checkForUpdates(showNoUpdateMessage = true) },
-                onToggleReferenceSpectrum = viewModel::toggleReferenceSpectrum,
-                onCycleReferenceNormalization = {
-                    viewModel.setReferenceNormalizationMode(
-                        when (state.referenceNormalizationMode) {
-                            ReferenceNormalizationMode.PEAK_NORMALIZE -> ReferenceNormalizationMode.AREA_NORMALIZE
-                            ReferenceNormalizationMode.AREA_NORMALIZE -> ReferenceNormalizationMode.FIT_TO_SAMPLE
-                            ReferenceNormalizationMode.FIT_TO_SAMPLE -> ReferenceNormalizationMode.PEAK_NORMALIZE
-                        }
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                RightPanel(
+                    measurement = measurement,
+                    summaryItems = viewModel.summaryItems(),
+                    referenceSpectra = selectedReferenceSpectra,
+                    referenceNormalizationMode = state.referenceNormalizationMode,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(with(LocalDensity.current) { topHeightPx.toDp() })
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(dividerHeight)
+                        .padding(vertical = 2.dp)
+                        .pointerInput(totalHeightPx) {
+                            detectDragGestures { change, dragAmount ->
+                                change.consume()
+                                val nextTop = (topHeightPx + dragAmount.y)
+                                    .coerceIn(minTopPx, availableHeight - minBottomPx)
+                                portraitTopFraction = (nextTop / availableHeight).coerceIn(0.25f, 0.75f)
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(72.dp)
+                            .height(4.dp)
+                            .background(Color(0xFFD0D7E2), RoundedCornerShape(999.dp))
                     )
-                },
-                onMoveSelection = viewModel::moveSelection,
-                onSelectSample = viewModel::selectSample,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(0.48f)
-            )
+                }
+
+                ControlPanel(
+                    state = state,
+                    visibleMeasurements = visibleMeasurements,
+                    isLandscape = false,
+                    onOpenFile = onOpenFile,
+                    onExport = onExport,
+                    updateButtonLabel = viewModel.updateButtonLabel(),
+                    onCheckUpdates = { viewModel.checkForUpdates(showNoUpdateMessage = true) },
+                    onToggleReferenceSpectrum = viewModel::toggleReferenceSpectrum,
+                    onCycleReferenceNormalization = {
+                        viewModel.setReferenceNormalizationMode(
+                            when (state.referenceNormalizationMode) {
+                                ReferenceNormalizationMode.PEAK_NORMALIZE -> ReferenceNormalizationMode.AREA_NORMALIZE
+                                ReferenceNormalizationMode.AREA_NORMALIZE -> ReferenceNormalizationMode.FIT_TO_SAMPLE
+                                ReferenceNormalizationMode.FIT_TO_SAMPLE -> ReferenceNormalizationMode.PEAK_NORMALIZE
+                            }
+                        )
+                    },
+                    onMoveSelection = viewModel::moveSelection,
+                    onSelectSample = viewModel::selectSample,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(with(LocalDensity.current) { bottomHeightPx.toDp() })
+                )
+            }
         }
     }
 
@@ -354,12 +395,6 @@ private fun PanelHeader(
             ) {
                 Text("Export")
             }
-            Button(onClick = onCheckUpdates, modifier = Modifier.weight(1f)) {
-                Text(updateButtonLabel)
-            }
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
                 onClick = { showReferencePicker = true },
                 modifier = Modifier.weight(1f),
@@ -372,7 +407,13 @@ private fun PanelHeader(
                 modifier = Modifier.weight(1f),
                 enabled = state.referenceSpectra.isNotEmpty()
             ) {
-                Text(state.referenceNormalizationMode.label, maxLines = 2)
+                Text(state.referenceNormalizationMode.label, maxLines = 1)
+            }
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = onCheckUpdates, modifier = Modifier.fillMaxWidth()) {
+                Text(updateButtonLabel)
             }
         }
 
