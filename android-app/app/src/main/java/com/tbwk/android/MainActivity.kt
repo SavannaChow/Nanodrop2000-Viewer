@@ -44,6 +44,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -77,6 +78,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.net.toUri
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -104,6 +106,9 @@ class MainActivity : ComponentActivity() {
                         viewModel = viewModel,
                         onOpenFile = { picker.launch(arrayOf("*/*")) },
                         onExport = { viewModel.exportCurrentWorksheet(this) },
+                        onDownloadUpdate = { url ->
+                            startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                        },
                     )
                 }
             }
@@ -131,12 +136,17 @@ private fun ViewerScreen(
     viewModel: MainViewModel,
     onOpenFile: () -> Unit,
     onExport: () -> Unit,
+    onDownloadUpdate: (String) -> Unit,
 ) {
     val state = viewModel.uiState
     val measurement = viewModel.selectedMeasurement()
     val selectedReferenceSpectra = viewModel.selectedReferenceSpectra()
     val visibleMeasurements = viewModel.visibleMeasurements()
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    LaunchedEffect(Unit) {
+        viewModel.checkForUpdatesIfNeeded()
+    }
 
     if (isLandscape) {
         Row(
@@ -151,6 +161,8 @@ private fun ViewerScreen(
                 isLandscape = true,
                 onOpenFile = onOpenFile,
                 onExport = onExport,
+                updateButtonLabel = viewModel.updateButtonLabel(),
+                onCheckUpdates = { viewModel.checkForUpdates(showNoUpdateMessage = true) },
                 onToggleReferenceSpectrum = viewModel::toggleReferenceSpectrum,
                 onCycleReferenceNormalization = {
                     viewModel.setReferenceNormalizationMode(
@@ -197,6 +209,8 @@ private fun ViewerScreen(
                 isLandscape = false,
                 onOpenFile = onOpenFile,
                 onExport = onExport,
+                updateButtonLabel = viewModel.updateButtonLabel(),
+                onCheckUpdates = { viewModel.checkForUpdates(showNoUpdateMessage = true) },
                 onToggleReferenceSpectrum = viewModel::toggleReferenceSpectrum,
                 onCycleReferenceNormalization = {
                     viewModel.setReferenceNormalizationMode(
@@ -215,6 +229,29 @@ private fun ViewerScreen(
             )
         }
     }
+
+    if (state.showUpdatePrompt && state.availableUpdate != null) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissUpdatePrompt,
+            title = { Text("Update Available") },
+            text = {
+                Text("Current version: ${BuildConfig.VERSION_NAME}\nLatest version: ${state.availableUpdate.version}")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDownloadUpdate(state.availableUpdate.downloadUrl)
+                    viewModel.dismissUpdatePrompt()
+                }) {
+                    Text("Download")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissUpdatePrompt) {
+                    Text("Later")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -224,6 +261,8 @@ private fun ControlPanel(
     isLandscape: Boolean,
     onOpenFile: () -> Unit,
     onExport: () -> Unit,
+    updateButtonLabel: String,
+    onCheckUpdates: () -> Unit,
     onToggleReferenceSpectrum: (String) -> Unit,
     onCycleReferenceNormalization: () -> Unit,
     onMoveSelection: (Int) -> Unit,
@@ -246,6 +285,8 @@ private fun ControlPanel(
                     state = state,
                     onOpenFile = onOpenFile,
                     onExport = onExport,
+                    updateButtonLabel = updateButtonLabel,
+                    onCheckUpdates = onCheckUpdates,
                     onToggleReferenceSpectrum = onToggleReferenceSpectrum,
                     onCycleReferenceNormalization = onCycleReferenceNormalization,
                 )
@@ -269,6 +310,8 @@ private fun ControlPanel(
                     state = state,
                     onOpenFile = onOpenFile,
                     onExport = onExport,
+                    updateButtonLabel = updateButtonLabel,
+                    onCheckUpdates = onCheckUpdates,
                     onToggleReferenceSpectrum = onToggleReferenceSpectrum,
                     onCycleReferenceNormalization = onCycleReferenceNormalization,
                 )
@@ -292,6 +335,8 @@ private fun PanelHeader(
     state: ViewerUiState,
     onOpenFile: () -> Unit,
     onExport: () -> Unit,
+    updateButtonLabel: String,
+    onCheckUpdates: () -> Unit,
     onToggleReferenceSpectrum: (String) -> Unit,
     onCycleReferenceNormalization: () -> Unit,
 ) {
@@ -308,6 +353,9 @@ private fun PanelHeader(
                 enabled = state.worksheet != null && !state.isLoading
             ) {
                 Text("Export")
+            }
+            Button(onClick = onCheckUpdates, modifier = Modifier.weight(1f)) {
+                Text(updateButtonLabel)
             }
         }
 
@@ -366,6 +414,10 @@ private fun PanelMessages(state: ViewerUiState) {
 
         state.exportMessage?.let {
             Text(it, color = Color(0xFF027A48))
+        }
+
+        state.updateStatusMessage?.let {
+            Text(it, color = Color(0xFF175CD3))
         }
 
         if (state.isLoading) {

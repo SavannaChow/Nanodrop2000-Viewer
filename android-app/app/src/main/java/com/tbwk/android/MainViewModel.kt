@@ -21,6 +21,9 @@ data class ViewerUiState(
     val referenceSpectra: List<ReferenceSpectrum> = emptyList(),
     val selectedReferenceIds: Set<String> = emptySet(),
     val referenceNormalizationMode: ReferenceNormalizationMode = ReferenceNormalizationMode.PEAK_NORMALIZE,
+    val availableUpdate: AppUpdateInfo? = null,
+    val showUpdatePrompt: Boolean = false,
+    val updateStatusMessage: String? = null,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val exportMessage: String? = null,
@@ -29,6 +32,10 @@ data class ViewerUiState(
 class MainViewModel : ViewModel() {
     var uiState by mutableStateOf(ViewerUiState())
         private set
+    private var hasCheckedForUpdates = false
+
+    fun updateButtonLabel(): String =
+        uiState.availableUpdate?.let { "Update ${it.version}" } ?: "Check Updates"
 
     fun loadUri(context: Context, uri: Uri) {
         val contentResolver = context.contentResolver
@@ -152,6 +159,44 @@ class MainViewModel : ViewModel() {
 
     fun setReferenceNormalizationMode(mode: ReferenceNormalizationMode) {
         uiState = uiState.copy(referenceNormalizationMode = mode)
+    }
+
+    fun checkForUpdatesIfNeeded() {
+        if (hasCheckedForUpdates) return
+        hasCheckedForUpdates = true
+        checkForUpdates(showNoUpdateMessage = false)
+    }
+
+    fun checkForUpdates(showNoUpdateMessage: Boolean) {
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    UpdateChecker.checkForUpdate(BuildConfig.VERSION_NAME)
+                }
+            }.onSuccess { update ->
+                uiState = when {
+                    update != null -> uiState.copy(
+                        availableUpdate = update,
+                        showUpdatePrompt = true,
+                        updateStatusMessage = "Update ${update.version} is available.",
+                    )
+                    showNoUpdateMessage -> uiState.copy(
+                        availableUpdate = null,
+                        showUpdatePrompt = false,
+                        updateStatusMessage = "You are up to date.",
+                    )
+                    else -> uiState
+                }
+            }.onFailure {
+                if (showNoUpdateMessage) {
+                    uiState = uiState.copy(updateStatusMessage = "Unable to check for updates.")
+                }
+            }
+        }
+    }
+
+    fun dismissUpdatePrompt() {
+        uiState = uiState.copy(showUpdatePrompt = false)
     }
 
     private fun formatDouble(value: Double): String {

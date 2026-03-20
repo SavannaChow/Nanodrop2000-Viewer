@@ -24,6 +24,7 @@
                     <StackPanel Orientation="Horizontal">
                         <Button Content="Import" Margin="0,0,8,0" Padding="14,8" Command="{Binding ImportCommand}" />
                         <Button Content="Export" Margin="0,0,8,0" Padding="14,8" Command="{Binding ExportCommand}" />
+                        <Button Content="{Binding UpdateButtonLabel}" Margin="0,0,8,0" Padding="14,8" Command="{Binding CheckUpdatesCommand}" />
                         <Button Content="Info" Padding="14,8" Click="HandleInfoClick" />
                     </StackPanel>
                     <TextBlock Margin="0,12,0,0"
@@ -34,6 +35,10 @@
                                Text="{Binding StatusMessage}"
                                TextWrapping="Wrap"
                                Foreground="#FF667085" />
+                    <TextBlock Margin="0,8,0,0"
+                               Text="{Binding UpdateStatusMessage}"
+                               TextWrapping="Wrap"
+                               Foreground="#FF175CD3" />
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">

@@ -8,6 +8,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows.Media;
 
@@ -23,12 +24,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private SampleItem? _selectedSample;
     private ReferenceNormalizationMode _selectedNormalizationMode = ReferenceNormalizationMode.PeakNormalize;
     private string? _currentFilePath;
+    private string? _updateStatusMessage;
+    private AppUpdateInfo? _availableUpdate;
+    private bool _hasCheckedForUpdates;
 
     public MainWindowViewModel()
     {
         SelectedSamples = new ReadOnlyObservableCollection<SampleItem>(_selectedSamples);
         ImportCommand = new RelayCommand(ImportFile);
         ExportCommand = new RelayCommand(ExportFiles, () => HasWorksheet);
+        CheckUpdatesCommand = new RelayCommand(() => _ = CheckForUpdatesAsync(true));
         PreviousCommand = new RelayCommand(() => MoveSelection(-1), () => CanMovePrevious);
         NextCommand = new RelayCommand(() => MoveSelection(1), () => CanMoveNext);
 
@@ -40,6 +45,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         PlotPlaceholderText = "Spectrum plot will render here in the Windows UI layer.";
+        _ = CheckForUpdatesAsync(false);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -57,6 +63,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public ICommand ImportCommand { get; }
     public ICommand ExportCommand { get; }
+    public ICommand CheckUpdatesCommand { get; }
     public ICommand PreviousCommand { get; }
     public ICommand NextCommand { get; }
 
@@ -76,6 +83,26 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     public string PlotPlaceholderText { get; private set; }
+
+    public string UpdateButtonLabel => AvailableUpdate is null ? "Check Updates" : $"Update {AvailableUpdate.Version}";
+
+    public string? UpdateStatusMessage
+    {
+        get => _updateStatusMessage;
+        private set => SetProperty(ref _updateStatusMessage, value);
+    }
+
+    public AppUpdateInfo? AvailableUpdate
+    {
+        get => _availableUpdate;
+        private set
+        {
+            if (SetProperty(ref _availableUpdate, value))
+            {
+                OnPropertyChanged(nameof(UpdateButtonLabel));
+            }
+        }
+    }
 
     public ReferenceNormalizationMode SelectedNormalizationMode
     {
@@ -235,6 +262,61 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             StatusMessage = ex.Message;
+        }
+    }
+
+    private async Task CheckForUpdatesAsync(bool showNoUpdateMessage)
+    {
+        if (!showNoUpdateMessage && _hasCheckedForUpdates)
+        {
+            return;
+        }
+
+        if (!showNoUpdateMessage)
+        {
+            _hasCheckedForUpdates = true;
+        }
+
+        try
+        {
+            var update = await GitHubUpdateService.CheckForUpdatesAsync().ConfigureAwait(false);
+            await App.Current.Dispatcher.InvokeAsync(() =>
+            {
+                if (update is null)
+                {
+                    if (showNoUpdateMessage)
+                    {
+                        AvailableUpdate = null;
+                        UpdateStatusMessage = "You are up to date.";
+                    }
+                    return;
+                }
+
+                AvailableUpdate = update;
+                UpdateStatusMessage = $"Update {update.Version} is available.";
+
+                var result = System.Windows.MessageBox.Show(
+                    $"Current version: {GitHubUpdateService.CurrentVersion}\nLatest version: {update.Version}\n\nDownload update now?",
+                    "Update Available",
+                    System.Windows.MessageBoxButton.YesNo,
+                    System.Windows.MessageBoxImage.Information
+                );
+
+                if (result == System.Windows.MessageBoxResult.Yes)
+                {
+                    GitHubUpdateService.OpenDownload(update.DownloadUrl);
+                }
+            });
+        }
+        catch
+        {
+            if (showNoUpdateMessage)
+            {
+                await App.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    UpdateStatusMessage = "Unable to check for updates.";
+                });
+            }
         }
     }
 

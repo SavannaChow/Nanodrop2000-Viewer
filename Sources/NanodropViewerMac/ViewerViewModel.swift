@@ -18,6 +18,10 @@ final class ViewerViewModel: ObservableObject {
     @Published var isShowingInfo = false
     @Published var selectedReferenceIDs: Set<String> = []
     @Published var referenceNormalizationMode: ReferenceNormalizationMode = .peakNormalize
+    @Published var updateInfo: AppUpdateInfo?
+    @Published var isShowingUpdatePrompt = false
+    @Published var updateStatusMessage: String?
+    private var hasCheckedForUpdates = false
 
     let availableReferenceSpectra: [ReferenceSpectrum] = ReferenceSpectrumLibrary.loadBundledSpectra()
 
@@ -51,6 +55,10 @@ final class ViewerViewModel: ObservableObject {
 
     var displayedFileName: String {
         fileURL?.lastPathComponent ?? "No file selected"
+    }
+
+    var updateButtonTitle: String {
+        updateInfo.map { "Update \($0.version)" } ?? "Check Updates"
     }
 
     var selectedReferenceSpectra: [ReferenceSpectrum] {
@@ -172,6 +180,36 @@ final class ViewerViewModel: ObservableObject {
         } else {
             selectedReferenceIDs.insert(id)
         }
+    }
+
+    func checkForUpdatesIfNeeded() {
+        guard !hasCheckedForUpdates else { return }
+        hasCheckedForUpdates = true
+        Task {
+            await checkForUpdates(showNoUpdateMessage: false)
+        }
+    }
+
+    func checkForUpdates(showNoUpdateMessage: Bool) async {
+        do {
+            if let update = try await UpdateService.checkForUpdate() {
+                updateInfo = update
+                updateStatusMessage = "Update \(update.version) is available."
+                isShowingUpdatePrompt = true
+            } else if showNoUpdateMessage {
+                updateInfo = nil
+                updateStatusMessage = "You are up to date."
+            }
+        } catch {
+            if showNoUpdateMessage {
+                updateStatusMessage = "Unable to check for updates."
+            }
+        }
+    }
+
+    func downloadUpdate() {
+        guard let updateInfo else { return }
+        UpdateService.openDownloadURL(updateInfo.downloadURL)
     }
 
     private func exportDirectory(for fileURL: URL) throws -> URL {

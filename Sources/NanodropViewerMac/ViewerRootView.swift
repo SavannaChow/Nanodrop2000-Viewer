@@ -65,9 +65,18 @@ struct ViewerRootView: View {
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             sampleListFocused = true
+            viewModel.checkForUpdatesIfNeeded()
         }
         .sheet(isPresented: $viewModel.isShowingInfo) {
             ViewerInfoSheet()
+        }
+        .alert("Update Available", isPresented: $viewModel.isShowingUpdatePrompt, presenting: viewModel.updateInfo) { update in
+            Button("Download") {
+                viewModel.downloadUpdate()
+            }
+            Button("Later", role: .cancel) {}
+        } message: { update in
+            Text("Current version: \(UpdateService.currentVersion())\nLatest version: \(update.version)")
         }
         .onDrop(of: [UTType.fileURL.identifier], isTargeted: nil, perform: handleDrop(providers:))
     }
@@ -87,6 +96,13 @@ struct ViewerRootView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .disabled(viewModel.worksheet == nil || viewModel.isLoading)
+
+                Button(viewModel.updateButtonTitle) {
+                    Task {
+                        await viewModel.checkForUpdates(showNoUpdateMessage: true)
+                    }
+                }
+                .frame(maxWidth: .infinity)
             }
 
             Menu("Reference Spectra") {
@@ -126,6 +142,11 @@ struct ViewerRootView: View {
             if let exportMessage = viewModel.exportMessage {
                 Text(exportMessage)
                     .foregroundStyle(.green)
+            }
+
+            if let updateStatusMessage = viewModel.updateStatusMessage {
+                Text(updateStatusMessage)
+                    .foregroundStyle(.blue)
             }
 
             if viewModel.isLoading {
