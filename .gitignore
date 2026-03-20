@@ -25,3 +25,4 @@ tbwk_opener.egg-info/
 *_spectrum.csv
 *_spectra.pdf
 @command_history.txt
+.vscode/
