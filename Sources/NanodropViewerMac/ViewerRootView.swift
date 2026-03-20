@@ -90,15 +90,30 @@ struct ViewerRootView: View {
                 .disabled(viewModel.worksheet == nil || viewModel.isLoading)
 
                 Menu {
+                    Text("Current Version: \(viewModel.currentVersion)")
+                    if let latestVersion = viewModel.latestVersion {
+                        Text("Latest Version: \(latestVersion)")
+                    } else {
+                        Text("Latest Version: -")
+                    }
+                    Divider()
                     Button("Check for Updates") {
                         Task {
                             await viewModel.checkForUpdates(showNoUpdateMessage: true)
                         }
                     }
                 } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.title3)
-                        .frame(width: 34)
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.title3)
+                            .frame(width: 34)
+                        if viewModel.hasAvailableUpdate {
+                            Circle()
+                                .fill(.red)
+                                .frame(width: 8, height: 8)
+                                .offset(x: 1, y: -1)
+                        }
+                    }
                 }
             }
 

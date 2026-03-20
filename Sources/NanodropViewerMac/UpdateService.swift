@@ -7,6 +7,11 @@ struct AppUpdateInfo: Equatable {
     let downloadURL: URL
 }
 
+struct UpdateCheckResult: Equatable {
+    let latestVersion: String
+    let update: AppUpdateInfo?
+}
+
 private struct GitHubReleaseResponse: Decodable {
     struct Asset: Decodable {
         let name: String
@@ -36,7 +41,7 @@ enum UpdateService {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
     }
 
-    static func checkForUpdate() async throws -> AppUpdateInfo? {
+    static func checkForUpdate() async throws -> UpdateCheckResult {
         var request = URLRequest(url: latestReleaseURL)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("nanodrop-2000-viewer-macos", forHTTPHeaderField: "User-Agent")
@@ -50,20 +55,23 @@ enum UpdateService {
         let release = try JSONDecoder().decode(GitHubReleaseResponse.self, from: data)
         let latestVersion = normalizedVersion(release.tagName)
         guard isVersion(latestVersion, newerThan: normalizedVersion(currentVersion())) else {
-            return nil
+            return UpdateCheckResult(latestVersion: latestVersion, update: nil)
         }
 
         guard let asset = release.assets.first(where: {
             let name = $0.name.lowercased()
             return name.contains("macos") && name.hasSuffix(".dmg")
         }) else {
-            return nil
+            return UpdateCheckResult(latestVersion: latestVersion, update: nil)
         }
 
-        return AppUpdateInfo(
-            version: latestVersion,
-            notes: (release.body ?? "").trimmingCharacters(in: .whitespacesAndNewlines),
-            downloadURL: asset.browserDownloadURL
+        return UpdateCheckResult(
+            latestVersion: latestVersion,
+            update: AppUpdateInfo(
+                version: latestVersion,
+                notes: (release.body ?? "").trimmingCharacters(in: .whitespacesAndNewlines),
+                downloadURL: asset.browserDownloadURL
+            )
         )
     }
 

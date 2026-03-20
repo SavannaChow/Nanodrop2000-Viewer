@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 namespace NanodropViewer.App;
 
 public sealed record AppUpdateInfo(string Version, string Notes, string DownloadUrl);
+public sealed record UpdateCheckResult(string LatestVersion, AppUpdateInfo? Update);
 
 internal static class GitHubUpdateService
 {
@@ -17,7 +18,7 @@ internal static class GitHubUpdateService
     public static string CurrentVersion =>
         Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0";
 
-    public static async Task<AppUpdateInfo?> CheckForUpdatesAsync()
+    public static async Task<UpdateCheckResult> CheckForUpdatesAsync()
     {
         using var client = new HttpClient
         {
@@ -39,7 +40,7 @@ internal static class GitHubUpdateService
         var latestVersion = NormalizeVersion(release.TagName);
         if (!IsVersionNewer(latestVersion, NormalizeVersion(CurrentVersion)))
         {
-            return null;
+            return new UpdateCheckResult(latestVersion, null);
         }
 
         var asset = release.Assets.FirstOrDefault(asset =>
@@ -49,10 +50,13 @@ internal static class GitHubUpdateService
 
         if (asset is null)
         {
-            return null;
+            return new UpdateCheckResult(latestVersion, null);
         }
 
-        return new AppUpdateInfo(latestVersion, release.Body?.Trim() ?? string.Empty, asset.BrowserDownloadUrl);
+        return new UpdateCheckResult(
+            latestVersion,
+            new AppUpdateInfo(latestVersion, release.Body?.Trim() ?? string.Empty, asset.BrowserDownloadUrl)
+        );
     }
 
     public static void OpenDownload(string url)

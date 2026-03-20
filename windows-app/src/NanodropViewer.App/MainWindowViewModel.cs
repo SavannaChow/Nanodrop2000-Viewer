@@ -11,6 +11,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace NanodropViewer.App;
 
@@ -26,7 +27,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string? _currentFilePath;
     private string? _updateStatusMessage;
     private AppUpdateInfo? _availableUpdate;
+    private string? _latestVersion;
     private bool _hasCheckedForUpdates;
+    private readonly DispatcherTimer _transientMessageTimer = new() { Interval = TimeSpan.FromSeconds(3.5) };
+    private string? _pendingStatusMessageToClear;
+    private string? _pendingUpdateMessageToClear;
 
     public MainWindowViewModel()
     {
@@ -47,6 +52,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         PlotPlaceholderText = "Spectrum plot will render here in the Windows UI layer.";
+        _transientMessageTimer.Tick += HandleTransientMessageTimerTick;
         _ = CheckForUpdatesAsync(false);
     }
 
@@ -92,6 +98,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         get => _updateStatusMessage;
         private set => SetProperty(ref _updateStatusMessage, value);
+    }
+
+    public string CurrentVersion => GitHubUpdateService.CurrentVersion;
+
+    public string? LatestVersion
+    {
+        get => _latestVersion;
+        private set => SetProperty(ref _latestVersion, value);
     }
 
     public bool HasAvailableUpdate => AvailableUpdate is not null;
@@ -263,6 +277,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
             var result = WorksheetExporter.Export(_worksheet, _currentFilePath, dialog.FolderName);
             StatusMessage = $"Exported CSV and PDF to {result.OutputDirectory}";
+            ScheduleTransientMessageClear(statusMessage: StatusMessage, updateMessage: null);
         }
         catch (Exception ex)
         {
@@ -284,21 +299,23 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         try
         {
-            var update = await GitHubUpdateService.CheckForUpdatesAsync().ConfigureAwait(false);
+            var result = await GitHubUpdateService.CheckForUpdatesAsync().ConfigureAwait(false);
             await App.Current.Dispatcher.InvokeAsync(() =>
             {
-                if (update is null)
+                LatestVersion = result.LatestVersion;
+                if (result.Update is null)
                 {
                     if (showNoUpdateMessage)
                     {
                         AvailableUpdate = null;
                         UpdateStatusMessage = "You are up to date.";
+                        ScheduleTransientMessageClear(statusMessage: null, updateMessage: UpdateStatusMessage);
                     }
                     return;
                 }
 
-                AvailableUpdate = update;
-                UpdateStatusMessage = $"Update {update.Version} is available.";
+                AvailableUpdate = result.Update;
+                UpdateStatusMessage = $"Update {result.Update.Version} is available.";
             });
         }
         catch
@@ -308,6 +325,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 await App.Current.Dispatcher.InvokeAsync(() =>
                 {
                     UpdateStatusMessage = "Unable to check for updates.";
+                    ScheduleTransientMessageClear(statusMessage: null, updateMessage: UpdateStatusMessage);
                 });
             }
         }
@@ -336,6 +354,32 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             RefreshSelectionState();
         }
+    }
+
+    private void ScheduleTransientMessageClear(string? statusMessage, string? updateMessage)
+    {
+        _pendingStatusMessageToClear = statusMessage;
+        _pendingUpdateMessageToClear = updateMessage;
+        _transientMessageTimer.Stop();
+        _transientMessageTimer.Start();
+    }
+
+    private void HandleTransientMessageTimerTick(object? sender, EventArgs e)
+    {
+        _transientMessageTimer.Stop();
+
+        if (!string.IsNullOrEmpty(_pendingStatusMessageToClear) && StatusMessage == _pendingStatusMessageToClear)
+        {
+            StatusMessage = HasWorksheet ? $"Loaded {Samples.Count} samples. Reference spectra: {ReferenceOptions.Count}." : "Import a TBWK file to begin.";
+        }
+
+        if (!string.IsNullOrEmpty(_pendingUpdateMessageToClear) && UpdateStatusMessage == _pendingUpdateMessageToClear && AvailableUpdate is null)
+        {
+            UpdateStatusMessage = null;
+        }
+
+        _pendingStatusMessageToClear = null;
+        _pendingUpdateMessageToClear = null;
     }
 
     private void MoveSelection(int delta)

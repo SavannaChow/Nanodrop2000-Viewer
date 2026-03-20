@@ -20,7 +20,9 @@ final class ViewerViewModel: ObservableObject {
     @Published var referenceNormalizationMode: ReferenceNormalizationMode = .peakNormalize
     @Published var updateInfo: AppUpdateInfo?
     @Published var updateStatusMessage: String?
+    @Published var latestVersion: String?
     private var hasCheckedForUpdates = false
+    private var transientMessageTask: Task<Void, Never>?
 
     let availableReferenceSpectra: [ReferenceSpectrum] = ReferenceSpectrumLibrary.loadBundledSpectra()
 
@@ -57,6 +59,7 @@ final class ViewerViewModel: ObservableObject {
     }
 
     var hasAvailableUpdate: Bool { updateInfo != nil }
+    var currentVersion: String { UpdateService.currentVersion() }
 
     var selectedReferenceSpectra: [ReferenceSpectrum] {
         availableReferenceSpectra.filter { selectedReferenceIDs.contains($0.id) }
@@ -100,15 +103,20 @@ final class ViewerViewModel: ObservableObject {
         exportMessage = nil
 
         do {
-            let baseFolder = try exportDirectory(for: fileURL)
+            let baseFolder = try chooseExportDirectory(for: fileURL)
             let result = try TBWKExporter.export(
                 fileURL: fileURL,
                 outputDirectory: baseFolder,
                 baseName: fileURL.deletingPathExtension().lastPathComponent
             )
             exportMessage = "Exported to \(result.pdfURL.deletingLastPathComponent().path)"
+            scheduleTransientMessageClear()
         } catch {
-            errorMessage = error.localizedDescription
+            if (error as NSError).domain == NSCocoaErrorDomain && (error as NSError).code == NSUserCancelledError {
+                exportMessage = nil
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
 
         isLoading = false
@@ -193,16 +201,20 @@ final class ViewerViewModel: ObservableObject {
 
     func checkForUpdates(showNoUpdateMessage: Bool) async {
         do {
-            if let update = try await UpdateService.checkForUpdate() {
+            let result = try await UpdateService.checkForUpdate()
+            latestVersion = result.latestVersion
+            if let update = result.update {
                 updateInfo = update
                 updateStatusMessage = "Update \(update.version) is available."
             } else if showNoUpdateMessage {
                 updateInfo = nil
                 updateStatusMessage = "You are up to date."
+                scheduleTransientMessageClear()
             }
         } catch {
             if showNoUpdateMessage {
                 updateStatusMessage = "Unable to check for updates."
+                scheduleTransientMessageClear()
             }
         }
     }
@@ -212,21 +224,41 @@ final class ViewerViewModel: ObservableObject {
         UpdateService.openDownloadURL(updateInfo.downloadURL)
     }
 
-    private func exportDirectory(for fileURL: URL) throws -> URL {
-        let documentsURL = try FileManager.default.url(
-            for: .documentDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        )
+    private func chooseExportDirectory(for fileURL: URL) throws -> URL {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = true
+        panel.prompt = "Export"
+        panel.title = "Choose export folder"
+        panel.directoryURL = fileURL.deletingLastPathComponent()
+
+        guard panel.runModal() == .OK, let selectedDirectory = panel.url else {
+            throw NSError(domain: NSCocoaErrorDomain, code: NSUserCancelledError)
+        }
 
         let folderName = sanitizeForFileName(fileURL.deletingPathExtension().lastPathComponent)
-        let exportDirectory = documentsURL
-            .appendingPathComponent("Nanodrop2000_viewer", isDirectory: true)
+        let exportDirectory = selectedDirectory
             .appendingPathComponent(folderName, isDirectory: true)
 
         try FileManager.default.createDirectory(at: exportDirectory, withIntermediateDirectories: true)
         return exportDirectory
+    }
+
+    private func scheduleTransientMessageClear() {
+        transientMessageTask?.cancel()
+        let currentExportMessage = exportMessage
+        let currentUpdateStatusMessage = updateStatusMessage
+        transientMessageTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(3.5))
+            if exportMessage == currentExportMessage {
+                exportMessage = nil
+            }
+            if updateStatusMessage == currentUpdateStatusMessage && updateInfo == nil {
+                updateStatusMessage = nil
+            }
+        }
     }
 
     private func sanitizeForFileName(_ name: String) -> String {

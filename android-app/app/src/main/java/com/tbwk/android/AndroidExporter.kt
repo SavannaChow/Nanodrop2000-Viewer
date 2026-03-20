@@ -11,6 +11,7 @@ import android.graphics.Path
 import android.graphics.pdf.PdfDocument
 import android.os.Environment
 import android.provider.MediaStore
+import androidx.documentfile.provider.DocumentFile
 import java.io.ByteArrayOutputStream
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -26,38 +27,43 @@ data class ExportedFiles(
 )
 
 object AndroidExporter {
-    fun export(context: Context, fileBaseName: String, worksheet: Worksheet): ExportedFiles {
+    fun export(context: Context, directoryUri: Uri, fileBaseName: String, worksheet: Worksheet): ExportedFiles {
         val baseName = fileBaseName.substringBeforeLast('.')
         val sanitizedBaseName = sanitizeForFileName(baseName)
-        val relativeDirectory = "${Environment.DIRECTORY_DOCUMENTS}/Nanodrop2000_viewer/$sanitizedBaseName/"
         val summaryFileName = "${baseName}_summary.csv"
         val spectrumFileName = "${baseName}_spectrum.csv"
         val pdfFileName = "${baseName}_spectra.pdf"
+        val rootDirectory = DocumentFile.fromTreeUri(context, directoryUri)
+            ?: error("Could not open selected export folder.")
+        val exportDirectory = rootDirectory.findFile(sanitizedBaseName)
+            ?.takeIf { it.isDirectory }
+            ?: rootDirectory.createDirectory(sanitizedBaseName)
+            ?: error("Failed to create export folder.")
 
-        val summaryUri = writePublicDocument(
+        val summaryUri = writeTreeDocument(
             context = context,
-            relativeDirectory = relativeDirectory,
+            directory = exportDirectory,
             displayName = summaryFileName,
             mimeType = "text/csv",
             bytes = buildSummaryCsv(worksheet).toByteArray()
         )
-        val spectrumUri = writePublicDocument(
+        val spectrumUri = writeTreeDocument(
             context = context,
-            relativeDirectory = relativeDirectory,
+            directory = exportDirectory,
             displayName = spectrumFileName,
             mimeType = "text/csv",
             bytes = buildSpectrumCsv(worksheet).toByteArray()
         )
-        val pdfUri = writePublicDocument(
+        val pdfUri = writeTreeDocument(
             context = context,
-            relativeDirectory = relativeDirectory,
+            directory = exportDirectory,
             displayName = pdfFileName,
             mimeType = "application/pdf",
             bytes = buildSpectraPdfBytes(worksheet)
         )
 
         return ExportedFiles(
-            directoryDisplayPath = "Documents/Nanodrop2000_viewer/$sanitizedBaseName",
+            directoryDisplayPath = exportDirectory.name ?: exportDirectory.uri.toString(),
             summaryFileName = summaryFileName,
             spectrumFileName = spectrumFileName,
             pdfFileName = pdfFileName,
@@ -283,6 +289,21 @@ object AndroidExporter {
             ?: error("Failed to write $displayName in public Documents.")
 
         return uri
+    }
+
+    private fun writeTreeDocument(
+        context: Context,
+        directory: DocumentFile,
+        displayName: String,
+        mimeType: String,
+        bytes: ByteArray,
+    ): Uri {
+        directory.findFile(displayName)?.delete()
+        val file = directory.createFile(mimeType, displayName)
+            ?: error("Failed to create $displayName in selected folder.")
+        context.contentResolver.openOutputStream(file.uri)?.use { it.write(bytes) }
+            ?: error("Failed to write $displayName in selected folder.")
+        return file.uri
     }
 
     private fun deleteExistingDocument(

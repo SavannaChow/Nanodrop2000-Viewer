@@ -9,6 +9,8 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
@@ -21,6 +23,7 @@ data class ViewerUiState(
     val selectedReferenceIds: Set<String> = emptySet(),
     val referenceNormalizationMode: ReferenceNormalizationMode = ReferenceNormalizationMode.PEAK_NORMALIZE,
     val availableUpdate: AppUpdateInfo? = null,
+    val latestVersion: String? = null,
     val updateStatusMessage: String? = null,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
@@ -31,6 +34,7 @@ class MainViewModel : ViewModel() {
     var uiState by mutableStateOf(ViewerUiState())
         private set
     private var hasCheckedForUpdates = false
+    private var transientMessageJob: Job? = null
 
     fun loadUri(context: Context, uri: Uri) {
         val contentResolver = context.contentResolver
@@ -95,7 +99,7 @@ class MainViewModel : ViewModel() {
         selectSample(visible[nextPosition].first)
     }
 
-    fun exportCurrentWorksheet(context: Context) {
+    fun exportCurrentWorksheet(context: Context, directoryUri: Uri) {
         val worksheet = uiState.worksheet ?: return
         val fileName = uiState.fileName ?: "tbwk_export"
 
@@ -103,13 +107,14 @@ class MainViewModel : ViewModel() {
             uiState = uiState.copy(isLoading = true, errorMessage = null, exportMessage = null)
             runCatching {
                 withContext(Dispatchers.IO) {
-                    AndroidExporter.export(context, fileName, worksheet)
+                    AndroidExporter.export(context, directoryUri, fileName, worksheet)
                 }
             }.onSuccess { exported ->
                 uiState = uiState.copy(
                     isLoading = false,
                     exportMessage = "Exported files to ${exported.directoryDisplayPath}",
                 )
+                clearTransientMessagesLater()
             }.onFailure { throwable ->
                 uiState = uiState.copy(
                     isLoading = false,
@@ -188,23 +193,45 @@ class MainViewModel : ViewModel() {
                 withContext(Dispatchers.IO) {
                     UpdateChecker.checkForUpdate(BuildConfig.VERSION_NAME)
                 }
-            }.onSuccess { update ->
+            }.onSuccess { result ->
                 uiState = when {
-                    update != null -> uiState.copy(
-                        availableUpdate = update,
-                        updateStatusMessage = "Update ${update.version} is available.",
+                    result.update != null -> uiState.copy(
+                        availableUpdate = result.update,
+                        latestVersion = result.latestVersion,
+                        updateStatusMessage = "Update ${result.update.version} is available.",
                     )
                     showNoUpdateMessage -> uiState.copy(
                         availableUpdate = null,
+                        latestVersion = result.latestVersion,
                         updateStatusMessage = "You are up to date.",
                     )
-                    else -> uiState
+                    else -> uiState.copy(
+                        availableUpdate = null,
+                        latestVersion = result.latestVersion,
+                    )
+                }
+                if (result.update == null && showNoUpdateMessage) {
+                    clearTransientMessagesLater()
                 }
             }.onFailure {
                 if (showNoUpdateMessage) {
                     uiState = uiState.copy(updateStatusMessage = "Unable to check for updates.")
+                    clearTransientMessagesLater()
                 }
             }
+        }
+    }
+
+    private fun clearTransientMessagesLater() {
+        transientMessageJob?.cancel()
+        val currentUpdateMessage = uiState.updateStatusMessage
+        val currentExportMessage = uiState.exportMessage
+        transientMessageJob = viewModelScope.launch {
+            delay(3500)
+            uiState = uiState.copy(
+                updateStatusMessage = if (uiState.updateStatusMessage == currentUpdateMessage) null else uiState.updateStatusMessage,
+                exportMessage = if (uiState.exportMessage == currentExportMessage) null else uiState.exportMessage,
+            )
         }
     }
 

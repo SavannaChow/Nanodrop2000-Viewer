@@ -48,6 +48,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -101,6 +102,19 @@ class MainActivity : ComponentActivity() {
                 ) { uri ->
                     uri?.let { viewModel.loadUri(this, it) }
                 }
+                val exportPicker = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.OpenDocumentTree()
+                ) { uri ->
+                    uri?.let {
+                        runCatching {
+                            contentResolver.takePersistableUriPermission(
+                                it,
+                                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                            )
+                        }
+                        viewModel.exportCurrentWorksheet(this, it)
+                    }
+                }
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -109,7 +123,7 @@ class MainActivity : ComponentActivity() {
                     ViewerScreen(
                         viewModel = viewModel,
                         onOpenFile = { picker.launch(arrayOf("*/*")) },
-                        onExport = { viewModel.exportCurrentWorksheet(this) },
+                        onExport = { exportPicker.launch(null) },
                         onDownloadUpdate = { url ->
                             startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                         },
@@ -178,6 +192,9 @@ private fun ViewerScreen(
                 summaryItems = viewModel.summaryItems(),
                 referenceSpectra = selectedReferenceSpectra,
                 referenceNormalizationMode = state.referenceNormalizationMode,
+                hasAvailableUpdate = state.availableUpdate != null,
+                currentVersion = BuildConfig.VERSION_NAME,
+                latestVersion = state.latestVersion,
                 availableReferenceSpectra = state.referenceSpectra,
                 selectedReferenceIds = state.selectedReferenceIds,
                 onOpenFile = onOpenFile,
@@ -222,6 +239,9 @@ private fun ViewerScreen(
                     summaryItems = viewModel.summaryItems(),
                     referenceSpectra = selectedReferenceSpectra,
                     referenceNormalizationMode = state.referenceNormalizationMode,
+                    hasAvailableUpdate = state.availableUpdate != null,
+                    currentVersion = BuildConfig.VERSION_NAME,
+                    latestVersion = state.latestVersion,
                     availableReferenceSpectra = state.referenceSpectra,
                     selectedReferenceIds = state.selectedReferenceIds,
                     onOpenFile = onOpenFile,
@@ -546,6 +566,9 @@ private fun RightPanel(
     summaryItems: List<Pair<String, String>>,
     referenceSpectra: List<ReferenceSpectrum>,
     referenceNormalizationMode: ReferenceNormalizationMode,
+    hasAvailableUpdate: Boolean,
+    currentVersion: String,
+    latestVersion: String?,
     availableReferenceSpectra: List<ReferenceSpectrum>,
     selectedReferenceIds: Set<String>,
     onOpenFile: () -> Unit,
@@ -660,6 +683,9 @@ private fun RightPanel(
                     measurement = measurement,
                     referenceSpectra = referenceSpectra,
                     referenceNormalizationMode = referenceNormalizationMode,
+                    hasAvailableUpdate = hasAvailableUpdate,
+                    currentVersion = currentVersion,
+                    latestVersion = latestVersion,
                     onShowReference = { showReferenceDialog = true },
                     onShowReferencePicker = { showReferencePicker = true },
                     onCycleReferenceNormalization = onCycleReferenceNormalization,
@@ -778,6 +804,9 @@ private fun SpectrumChart(
     measurement: Measurement,
     referenceSpectra: List<ReferenceSpectrum>,
     referenceNormalizationMode: ReferenceNormalizationMode,
+    hasAvailableUpdate: Boolean,
+    currentVersion: String,
+    latestVersion: String?,
     onShowReference: () -> Unit,
     onShowReferencePicker: () -> Unit,
     onCycleReferenceNormalization: () -> Unit,
@@ -845,16 +874,38 @@ private fun SpectrumChart(
             }
             Box {
                 var showOverflowMenu by remember { mutableStateOf(false) }
-                TextButton(
-                    onClick = { showOverflowMenu = true },
-                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
-                ) {
-                    Text("⋮", fontSize = 18.sp, maxLines = 1)
+                Box {
+                    TextButton(
+                        onClick = { showOverflowMenu = true },
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                    ) {
+                        Text("⋮", fontSize = 18.sp, maxLines = 1)
+                    }
+                    if (hasAvailableUpdate) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = 4.dp, end = 4.dp)
+                                .size(8.dp)
+                                .background(Color(0xFFD92D20), RoundedCornerShape(999.dp))
+                        )
+                    }
                 }
                 DropdownMenu(
                     expanded = showOverflowMenu,
                     onDismissRequest = { showOverflowMenu = false }
                 ) {
+                    DropdownMenuItem(
+                        text = { Text("Current Version: $currentVersion") },
+                        onClick = {},
+                        enabled = false
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Latest Version: ${latestVersion ?: "-"}") },
+                        onClick = {},
+                        enabled = false
+                    )
+                    HorizontalDivider()
                     DropdownMenuItem(
                         text = { Text("Check for Updates") },
                         onClick = {

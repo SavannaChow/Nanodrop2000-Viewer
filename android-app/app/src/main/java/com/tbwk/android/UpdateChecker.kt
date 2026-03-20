@@ -10,10 +10,15 @@ data class AppUpdateInfo(
     val downloadUrl: String,
 )
 
+data class UpdateCheckResult(
+    val latestVersion: String,
+    val update: AppUpdateInfo?,
+)
+
 object UpdateChecker {
     private const val latestReleaseUrl = "https://api.github.com/repos/SavannaChow/Nanodrop2000-Viewer/releases/latest"
 
-    fun checkForUpdate(currentVersion: String): AppUpdateInfo? {
+    fun checkForUpdate(currentVersion: String): UpdateCheckResult {
         val connection = (URL(latestReleaseUrl).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 8_000
@@ -31,24 +36,27 @@ object UpdateChecker {
             val payload = JSONObject(stream.bufferedReader().readText())
             val latestVersion = normalizeVersion(payload.optString("tag_name"))
             if (!isVersionNewer(latestVersion, normalizeVersion(currentVersion))) {
-                return null
+                return UpdateCheckResult(latestVersion = latestVersion, update = null)
             }
 
-            val assets = payload.optJSONArray("assets") ?: return null
+            val assets = payload.optJSONArray("assets") ?: return UpdateCheckResult(latestVersion = latestVersion, update = null)
             for (index in 0 until assets.length()) {
                 val asset = assets.getJSONObject(index)
                 val name = asset.optString("name").lowercase()
                 if (name.contains("android") && name.endsWith(".apk")) {
-                    return AppUpdateInfo(
-                        version = latestVersion,
-                        notes = payload.optString("body").trim(),
-                        downloadUrl = asset.getString("browser_download_url"),
+                    return UpdateCheckResult(
+                        latestVersion = latestVersion,
+                        update = AppUpdateInfo(
+                            version = latestVersion,
+                            notes = payload.optString("body").trim(),
+                            downloadUrl = asset.getString("browser_download_url"),
+                        )
                     )
                 }
             }
-        }
 
-        return null
+            return UpdateCheckResult(latestVersion = latestVersion, update = null)
+        }
     }
 
     private fun normalizeVersion(raw: String): String =
