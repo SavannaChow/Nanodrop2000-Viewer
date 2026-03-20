@@ -25,17 +25,24 @@ final class ViewerViewModel: ObservableObject {
         worksheet?.measurements ?? []
     }
 
+    var orderedMeasurements: [(Int, TBWKCore.Measurement)] {
+        measurements
+            .enumerated()
+            .sorted {
+                if $0.element.time == $1.element.time {
+                    return $0.offset < $1.offset
+                }
+                return $0.element.time < $1.element.time
+            }
+            .map { ($0.offset, $0.element) }
+    }
+
     var selectedMeasurement: TBWKCore.Measurement? {
         measurements.indices.contains(primarySelection) ? measurements[primarySelection] : nil
     }
 
     var selectedMeasurements: [(Int, TBWKCore.Measurement)] {
-        selectedIndexes
-            .sorted()
-            .compactMap { index in
-                guard measurements.indices.contains(index) else { return nil }
-                return (index, measurements[index])
-            }
+        orderedMeasurements.filter { selectedIndexes.contains($0.0) }
     }
 
     var isMultiSelection: Bool {
@@ -70,8 +77,9 @@ final class ViewerViewModel: ObservableObject {
             let worksheet = try TBWKExporter.loadWorksheet(from: fileURL)
             self.worksheet = worksheet
             self.fileURL = fileURL
-            self.primarySelection = 0
-            self.selectedIndexes = worksheet.measurements.isEmpty ? [] : [0]
+            let firstIndex = orderedMeasurements.first?.0 ?? 0
+            self.primarySelection = firstIndex
+            self.selectedIndexes = worksheet.measurements.isEmpty ? [] : [firstIndex]
         } catch {
             self.errorMessage = error.localizedDescription
         }
@@ -102,8 +110,10 @@ final class ViewerViewModel: ObservableObject {
     }
 
     func moveSelection(by delta: Int) {
-        guard !measurements.isEmpty else { return }
-        let nextIndex = max(0, min(measurements.count - 1, primarySelection + delta))
+        guard !orderedMeasurements.isEmpty else { return }
+        let currentPosition = orderedMeasurements.firstIndex { $0.0 == primarySelection } ?? 0
+        let nextPosition = max(0, min(orderedMeasurements.count - 1, currentPosition + delta))
+        let nextIndex = orderedMeasurements[nextPosition].0
         primarySelection = nextIndex
         selectedIndexes = [nextIndex]
     }
@@ -208,7 +218,7 @@ final class ViewerViewModel: ObservableObject {
         }
 
         if !valid.contains(primarySelection) {
-            primarySelection = valid.max() ?? valid.min() ?? 0
+            primarySelection = orderedMeasurements.first(where: { valid.contains($0.0) })?.0 ?? 0
         }
     }
 }

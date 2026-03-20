@@ -43,10 +43,14 @@ class MainViewModel : ViewModel() {
                 val fileName = DocumentFile.fromSingleUri(context, uri)?.name
                     ?: uri.lastPathSegment
                     ?: "Selected file"
+                val firstSortedIndex = worksheet.measurements
+                    .mapIndexed { index, measurement -> index to measurement }
+                    .minWithOrNull(compareBy<Pair<Int, Measurement>> { it.second.time }.thenBy { it.first })
+                    ?.first ?: 0
                 uiState = ViewerUiState(
                     fileName = fileName,
                     worksheet = worksheet,
-                    selectedIndex = 0,
+                    selectedIndex = firstSortedIndex,
                     referenceSpectra = ReferenceSpectrumLibrary.loadBundledSpectra(context),
                     selectedReferenceIds = emptySet(),
                     referenceNormalizationMode = ReferenceNormalizationMode.PEAK_NORMALIZE,
@@ -66,7 +70,9 @@ class MainViewModel : ViewModel() {
 
     fun visibleMeasurements(): List<Pair<Int, Measurement>> {
         val worksheet = uiState.worksheet ?: return emptyList()
-        return worksheet.measurements.mapIndexed { index, measurement -> index to measurement }
+        return worksheet.measurements
+            .mapIndexed { index, measurement -> index to measurement }
+            .sortedWith(compareBy<Pair<Int, Measurement>> { it.second.time }.thenBy { it.first })
     }
 
     fun selectSample(index: Int) {

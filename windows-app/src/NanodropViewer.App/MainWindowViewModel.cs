@@ -93,8 +93,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public bool HasWorksheet => _worksheet is not null;
     public bool HasMultipleSelectedSamples => _selectedSamples.Count > 1;
-    public bool CanMovePrevious => SelectedSample is not null && SelectedSample.Index > 0;
-    public bool CanMoveNext => SelectedSample is not null && _worksheet is not null && SelectedSample.Index < _worksheet.Measurements.Count - 1;
+    public bool CanMovePrevious => SelectedSample is not null && SamplePosition(SelectedSample) > 0;
+    public bool CanMoveNext => SelectedSample is not null && SamplePosition(SelectedSample) < Samples.Count - 1;
     public bool HasSelectedReferences => ReferenceOptions.Any(item => item.IsSelected);
 
     public SampleItem? SelectedSample
@@ -119,9 +119,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         Samples.Clear();
         _selectedSamples.Clear();
-        for (var index = 0; index < worksheet.Measurements.Count; index++)
+        var ordered = worksheet.Measurements
+            .Select((measurement, index) => new { Index = index, Measurement = measurement })
+            .OrderBy(item => item.Measurement.Time)
+            .ThenBy(item => item.Index)
+            .ToArray();
+
+        for (var displayOrder = 0; displayOrder < ordered.Length; displayOrder++)
         {
-            Samples.Add(new SampleItem(index, worksheet.Measurements[index]));
+            Samples.Add(new SampleItem(ordered[displayOrder].Index, displayOrder, ordered[displayOrder].Measurement));
         }
 
         FileName = Path.GetFileName(filePath);
@@ -134,7 +140,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public void UpdateSelectedSamples(IReadOnlyList<SampleItem> selectedSamples)
     {
         _selectedSamples.Clear();
-        foreach (var sample in selectedSamples.Distinct())
+        foreach (var sample in selectedSamples
+                     .Distinct()
+                     .OrderBy(SamplePosition))
         {
             _selectedSamples.Add(sample);
         }
@@ -237,9 +245,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        var nextIndex = Math.Max(0, Math.Min(Samples.Count - 1, SelectedSample.Index + delta));
-        SelectedSample = Samples[nextIndex];
+        var currentPosition = SamplePosition(SelectedSample);
+        var nextPosition = Math.Max(0, Math.Min(Samples.Count - 1, currentPosition + delta));
+        SelectedSample = Samples[nextPosition];
         UpdateSelectedSamples(new[] { SelectedSample });
+    }
+
+    private int SamplePosition(SampleItem sample)
+    {
+        return Samples.IndexOf(sample);
     }
 
     private void RefreshSelectionState()
@@ -454,9 +468,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 }
 
-public sealed record SampleItem(int Index, Measurement Measurement)
+public sealed record SampleItem(int Index, int DisplayOrder, Measurement Measurement)
 {
-    public string DisplayName => $"#{Index + 1} {Measurement.Title}";
+    public string DisplayName => $"#{DisplayOrder + 1} {Measurement.Title}";
 }
 
 public sealed record SummaryItem(string Label, string Value);

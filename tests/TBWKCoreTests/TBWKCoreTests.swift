@@ -17,6 +17,23 @@ struct TBWKCoreTests {
         #expect(worksheet.measurements.first?.title == "wash")
         #expect(worksheet.measurements.first?.xLabel == "Wavelength (nm)")
         #expect(worksheet.measurements.first?.yLabel == "10mm Absorbance")
+        #expect(
+            worksheet.measurements.map(\.title) == [
+                "wash",
+                "blank",
+                "BSD01",
+                "BSD01",
+                "BSD01 cntl A1",
+                "wash",
+                "BSD01 cntl A2",
+                "wash",
+                "BSD01 cntl A3",
+                "BSD01 cntl A3",
+                "BSD01 cntl A4",
+                "wash",
+                "wash",
+            ]
+        )
     }
 
     @Test

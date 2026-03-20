@@ -137,9 +137,11 @@ struct ViewerRootView: View {
 
             ScrollViewReader { proxy in
                 List(selection: $viewModel.selectedIndexes) {
-                    ForEach(Array(viewModel.measurements.enumerated()), id: \.offset) { index, measurement in
-                        Text("#\(index + 1) \(measurement.title)")
-                            .tag(index)
+                    ForEach(Array(viewModel.orderedMeasurements.enumerated()), id: \.element.0) { displayIndex, entry in
+                        let originalIndex = entry.0
+                        let measurement = entry.1
+                        Text("#\(displayIndex + 1) \(measurement.title)")
+                            .tag(originalIndex)
                     }
                 }
                 .listStyle(.sidebar)

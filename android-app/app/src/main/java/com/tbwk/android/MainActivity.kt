@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -413,7 +414,9 @@ private fun SampleList(
         state = listState,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(visibleMeasurements, key = { it.first }) { (index, measurement) ->
+        itemsIndexed(visibleMeasurements, key = { _, item -> item.first }) { displayIndex, item ->
+            val index = item.first
+            val measurement = item.second
             val selected = index == selectedIndex
             val background = if (selected) Color(0xFF0F6CBD) else Color(0xFFF4F6FA)
             val textColor = if (selected) Color.White else Color(0xFF172033)
@@ -431,7 +434,7 @@ private fun SampleList(
                     .padding(horizontal = 12.dp, vertical = 10.dp)
             ) {
                 Text(
-                    text = "#${index + 1} ${measurement.title}",
+                    text = "#${displayIndex + 1} ${measurement.title}",
                     color = textColor,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
