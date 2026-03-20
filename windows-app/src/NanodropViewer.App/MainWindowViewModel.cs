@@ -34,6 +34,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ImportCommand = new RelayCommand(ImportFile);
         ExportCommand = new RelayCommand(ExportFiles, () => HasWorksheet);
         CheckUpdatesCommand = new RelayCommand(() => _ = CheckForUpdatesAsync(true));
+        DownloadUpdateCommand = new RelayCommand(DownloadUpdate, () => AvailableUpdate is not null);
         PreviousCommand = new RelayCommand(() => MoveSelection(-1), () => CanMovePrevious);
         NextCommand = new RelayCommand(() => MoveSelection(1), () => CanMoveNext);
 
@@ -64,6 +65,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand ImportCommand { get; }
     public ICommand ExportCommand { get; }
     public ICommand CheckUpdatesCommand { get; }
+    public ICommand DownloadUpdateCommand { get; }
     public ICommand PreviousCommand { get; }
     public ICommand NextCommand { get; }
 
@@ -84,13 +86,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public string PlotPlaceholderText { get; private set; }
 
-    public string UpdateButtonLabel => AvailableUpdate is null ? "Check Updates" : $"Update {AvailableUpdate.Version}";
-
     public string? UpdateStatusMessage
     {
         get => _updateStatusMessage;
         private set => SetProperty(ref _updateStatusMessage, value);
     }
+
+    public bool HasAvailableUpdate => AvailableUpdate is not null;
 
     public AppUpdateInfo? AvailableUpdate
     {
@@ -99,7 +101,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetProperty(ref _availableUpdate, value))
             {
-                OnPropertyChanged(nameof(UpdateButtonLabel));
+                OnPropertyChanged(nameof(HasAvailableUpdate));
+                ((RelayCommand)DownloadUpdateCommand).RaiseCanExecuteChanged();
             }
         }
     }
@@ -294,18 +297,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
                 AvailableUpdate = update;
                 UpdateStatusMessage = $"Update {update.Version} is available.";
-
-                var result = System.Windows.MessageBox.Show(
-                    $"Current version: {GitHubUpdateService.CurrentVersion}\nLatest version: {update.Version}\n\nDownload update now?",
-                    "Update Available",
-                    System.Windows.MessageBoxButton.YesNo,
-                    System.Windows.MessageBoxImage.Information
-                );
-
-                if (result == System.Windows.MessageBoxResult.Yes)
-                {
-                    GitHubUpdateService.OpenDownload(update.DownloadUrl);
-                }
             });
         }
         catch
@@ -318,6 +309,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 });
             }
         }
+    }
+
+    private void DownloadUpdate()
+    {
+        if (AvailableUpdate is null)
+        {
+            return;
+        }
+
+        GitHubUpdateService.OpenDownload(AvailableUpdate.DownloadUrl);
     }
 
     private void MoveSelection(int delta)

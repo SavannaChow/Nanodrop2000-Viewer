@@ -11,8 +11,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import kotlin.math.roundToInt
 
 data class ViewerUiState(
     val fileName: String? = null,
@@ -22,7 +21,6 @@ data class ViewerUiState(
     val selectedReferenceIds: Set<String> = emptySet(),
     val referenceNormalizationMode: ReferenceNormalizationMode = ReferenceNormalizationMode.PEAK_NORMALIZE,
     val availableUpdate: AppUpdateInfo? = null,
-    val showUpdatePrompt: Boolean = false,
     val updateStatusMessage: String? = null,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
@@ -33,9 +31,6 @@ class MainViewModel : ViewModel() {
     var uiState by mutableStateOf(ViewerUiState())
         private set
     private var hasCheckedForUpdates = false
-
-    fun updateButtonLabel(): String =
-        uiState.availableUpdate?.let { "Update ${it.version}" } ?: "Check Updates"
 
     fun loadUri(context: Context, uri: Uri) {
         val contentResolver = context.contentResolver
@@ -61,6 +56,8 @@ class MainViewModel : ViewModel() {
                     referenceSpectra = ReferenceSpectrumLibrary.loadBundledSpectra(context),
                     selectedReferenceIds = emptySet(),
                     referenceNormalizationMode = ReferenceNormalizationMode.PEAK_NORMALIZE,
+                    availableUpdate = uiState.availableUpdate,
+                    updateStatusMessage = uiState.updateStatusMessage,
                     isLoading = false,
                     errorMessage = null,
                     exportMessage = null,
@@ -124,20 +121,38 @@ class MainViewModel : ViewModel() {
 
     fun summaryItems(): List<Pair<String, String>> {
         val measurement = selectedMeasurement() ?: return emptyList()
-        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-            .withZone(ZoneId.systemDefault())
-
-        val items = mutableListOf(
+        val items = linkedMapOf(
             "Sample" to measurement.title,
-            "Time" to formatter.format(measurement.time),
         )
 
         measurement.properties.properties.toSortedMap().forEach { (key, property) ->
             val unit = property.value.unit?.let { " $it" }.orEmpty()
-            items += key to "${formatDouble(property.value.value)}$unit"
+            items[key] = if (key == "Nucleic Acid") {
+                "${property.value.value.roundToInt()}$unit"
+            } else {
+                "${formatDouble(property.value.value)}$unit"
+            }
         }
 
-        return items
+        val preferredOrder = listOf(
+            "Sample",
+            "Nucleic Acid",
+            "260/280",
+            "260/230",
+            "A260",
+            "A280",
+        )
+
+        val ordered = mutableListOf<Pair<String, String>>()
+        preferredOrder.forEach { key ->
+            items.remove(key)?.let { value -> ordered += key to value }
+        }
+
+        items.forEach { (key, value) ->
+            ordered += key to value
+        }
+
+        return ordered
     }
 
     fun selectedMeasurement(): Measurement? {
@@ -177,12 +192,10 @@ class MainViewModel : ViewModel() {
                 uiState = when {
                     update != null -> uiState.copy(
                         availableUpdate = update,
-                        showUpdatePrompt = true,
                         updateStatusMessage = "Update ${update.version} is available.",
                     )
                     showNoUpdateMessage -> uiState.copy(
                         availableUpdate = null,
-                        showUpdatePrompt = false,
                         updateStatusMessage = "You are up to date.",
                     )
                     else -> uiState
@@ -193,10 +206,6 @@ class MainViewModel : ViewModel() {
                 }
             }
         }
-    }
-
-    fun dismissUpdatePrompt() {
-        uiState = uiState.copy(showUpdatePrompt = false)
     }
 
     private fun formatDouble(value: Double): String {

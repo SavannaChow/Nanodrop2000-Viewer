@@ -18,7 +18,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +25,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -46,7 +46,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -75,6 +76,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -145,7 +147,6 @@ private fun ViewerScreen(
     val selectedReferenceSpectra = viewModel.selectedReferenceSpectra()
     val visibleMeasurements = viewModel.visibleMeasurements()
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-    var portraitTopFraction by remember { mutableStateOf(0.52f) }
 
     LaunchedEffect(Unit) {
         viewModel.checkForUpdatesIfNeeded()
@@ -164,20 +165,9 @@ private fun ViewerScreen(
                 isLandscape = true,
                 onOpenFile = onOpenFile,
                 onExport = onExport,
-                updateButtonLabel = viewModel.updateButtonLabel(),
-                onCheckUpdates = { viewModel.checkForUpdates(showNoUpdateMessage = true) },
-                onToggleReferenceSpectrum = viewModel::toggleReferenceSpectrum,
-                onCycleReferenceNormalization = {
-                    viewModel.setReferenceNormalizationMode(
-                        when (state.referenceNormalizationMode) {
-                            ReferenceNormalizationMode.PEAK_NORMALIZE -> ReferenceNormalizationMode.AREA_NORMALIZE
-                            ReferenceNormalizationMode.AREA_NORMALIZE -> ReferenceNormalizationMode.FIT_TO_SAMPLE
-                            ReferenceNormalizationMode.FIT_TO_SAMPLE -> ReferenceNormalizationMode.PEAK_NORMALIZE
-                        }
-                    )
-                },
                 onMoveSelection = viewModel::moveSelection,
                 onSelectSample = viewModel::selectSample,
+                onDownloadUpdate = onDownloadUpdate,
                 modifier = Modifier
                     .fillMaxHeight()
                     .width(300.dp)
@@ -188,6 +178,23 @@ private fun ViewerScreen(
                 summaryItems = viewModel.summaryItems(),
                 referenceSpectra = selectedReferenceSpectra,
                 referenceNormalizationMode = state.referenceNormalizationMode,
+                availableReferenceSpectra = state.referenceSpectra,
+                selectedReferenceIds = state.selectedReferenceIds,
+                onOpenFile = onOpenFile,
+                onExport = onExport,
+                showTopActions = false,
+                onToggleReferenceSpectrum = viewModel::toggleReferenceSpectrum,
+                onCycleReferenceNormalization = {
+                    viewModel.setReferenceNormalizationMode(
+                        when (state.referenceNormalizationMode) {
+                            ReferenceNormalizationMode.PEAK_NORMALIZE -> ReferenceNormalizationMode.AREA_NORMALIZE
+                            ReferenceNormalizationMode.AREA_NORMALIZE -> ReferenceNormalizationMode.FIT_TO_SAMPLE
+                            ReferenceNormalizationMode.FIT_TO_SAMPLE -> ReferenceNormalizationMode.PEAK_NORMALIZE
+                        }
+                    )
+                },
+                onCheckUpdates = { viewModel.checkForUpdates(showNoUpdateMessage = true) },
+                onDownloadUpdate = onDownloadUpdate,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -203,7 +210,7 @@ private fun ViewerScreen(
             val minTopPx = with(LocalDensity.current) { 220.dp.toPx() }
             val minBottomPx = with(LocalDensity.current) { 220.dp.toPx() }
             val availableHeight = (totalHeightPx - dividerHeightPx).coerceAtLeast(minTopPx + minBottomPx)
-            val topHeightPx = (availableHeight * portraitTopFraction).coerceIn(minTopPx, availableHeight - minBottomPx)
+            val topHeightPx = (availableHeight * 0.6f).coerceIn(minTopPx, availableHeight - minBottomPx)
             val bottomHeightPx = (availableHeight - topHeightPx).coerceAtLeast(minBottomPx)
 
             Column(
@@ -215,6 +222,23 @@ private fun ViewerScreen(
                     summaryItems = viewModel.summaryItems(),
                     referenceSpectra = selectedReferenceSpectra,
                     referenceNormalizationMode = state.referenceNormalizationMode,
+                    availableReferenceSpectra = state.referenceSpectra,
+                    selectedReferenceIds = state.selectedReferenceIds,
+                    onOpenFile = onOpenFile,
+                    onExport = onExport,
+                    showTopActions = true,
+                    onToggleReferenceSpectrum = viewModel::toggleReferenceSpectrum,
+                    onCycleReferenceNormalization = {
+                        viewModel.setReferenceNormalizationMode(
+                            when (state.referenceNormalizationMode) {
+                                ReferenceNormalizationMode.PEAK_NORMALIZE -> ReferenceNormalizationMode.AREA_NORMALIZE
+                                ReferenceNormalizationMode.AREA_NORMALIZE -> ReferenceNormalizationMode.FIT_TO_SAMPLE
+                                ReferenceNormalizationMode.FIT_TO_SAMPLE -> ReferenceNormalizationMode.PEAK_NORMALIZE
+                            }
+                        )
+                    },
+                    onCheckUpdates = { viewModel.checkForUpdates(showNoUpdateMessage = true) },
+                    onDownloadUpdate = onDownloadUpdate,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(with(LocalDensity.current) { topHeightPx.toDp() })
@@ -224,15 +248,7 @@ private fun ViewerScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(dividerHeight)
-                        .padding(vertical = 2.dp)
-                        .pointerInput(totalHeightPx) {
-                            detectDragGestures { change, dragAmount ->
-                                change.consume()
-                                val nextTop = (topHeightPx + dragAmount.y)
-                                    .coerceIn(minTopPx, availableHeight - minBottomPx)
-                                portraitTopFraction = (nextTop / availableHeight).coerceIn(0.25f, 0.75f)
-                            }
-                        },
+                        .padding(vertical = 2.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Box(
@@ -249,49 +265,15 @@ private fun ViewerScreen(
                     isLandscape = false,
                     onOpenFile = onOpenFile,
                     onExport = onExport,
-                    updateButtonLabel = viewModel.updateButtonLabel(),
-                    onCheckUpdates = { viewModel.checkForUpdates(showNoUpdateMessage = true) },
-                    onToggleReferenceSpectrum = viewModel::toggleReferenceSpectrum,
-                    onCycleReferenceNormalization = {
-                        viewModel.setReferenceNormalizationMode(
-                            when (state.referenceNormalizationMode) {
-                                ReferenceNormalizationMode.PEAK_NORMALIZE -> ReferenceNormalizationMode.AREA_NORMALIZE
-                                ReferenceNormalizationMode.AREA_NORMALIZE -> ReferenceNormalizationMode.FIT_TO_SAMPLE
-                                ReferenceNormalizationMode.FIT_TO_SAMPLE -> ReferenceNormalizationMode.PEAK_NORMALIZE
-                            }
-                        )
-                    },
                     onMoveSelection = viewModel::moveSelection,
                     onSelectSample = viewModel::selectSample,
+                    onDownloadUpdate = onDownloadUpdate,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(with(LocalDensity.current) { bottomHeightPx.toDp() })
                 )
             }
         }
-    }
-
-    if (state.showUpdatePrompt && state.availableUpdate != null) {
-        AlertDialog(
-            onDismissRequest = viewModel::dismissUpdatePrompt,
-            title = { Text("Update Available") },
-            text = {
-                Text("Current version: ${BuildConfig.VERSION_NAME}\nLatest version: ${state.availableUpdate.version}")
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    onDownloadUpdate(state.availableUpdate.downloadUrl)
-                    viewModel.dismissUpdatePrompt()
-                }) {
-                    Text("Download")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::dismissUpdatePrompt) {
-                    Text("Later")
-                }
-            }
-        )
     }
 }
 
@@ -302,12 +284,9 @@ private fun ControlPanel(
     isLandscape: Boolean,
     onOpenFile: () -> Unit,
     onExport: () -> Unit,
-    updateButtonLabel: String,
-    onCheckUpdates: () -> Unit,
-    onToggleReferenceSpectrum: (String) -> Unit,
-    onCycleReferenceNormalization: () -> Unit,
     onMoveSelection: (Int) -> Unit,
     onSelectSample: (Int) -> Unit,
+    onDownloadUpdate: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -324,14 +303,11 @@ private fun ControlPanel(
             ) {
                 PanelHeader(
                     state = state,
+                    showActions = true,
                     onOpenFile = onOpenFile,
                     onExport = onExport,
-                    updateButtonLabel = updateButtonLabel,
-                    onCheckUpdates = onCheckUpdates,
-                    onToggleReferenceSpectrum = onToggleReferenceSpectrum,
-                    onCycleReferenceNormalization = onCycleReferenceNormalization,
                 )
-                PanelMessages(state)
+                PanelMessages(state, onDownloadUpdate)
                 SampleList(
                     visibleMeasurements = visibleMeasurements,
                     selectedIndex = state.selectedIndex,
@@ -349,14 +325,11 @@ private fun ControlPanel(
             ) {
                 PanelHeader(
                     state = state,
+                    showActions = false,
                     onOpenFile = onOpenFile,
                     onExport = onExport,
-                    updateButtonLabel = updateButtonLabel,
-                    onCheckUpdates = onCheckUpdates,
-                    onToggleReferenceSpectrum = onToggleReferenceSpectrum,
-                    onCycleReferenceNormalization = onCycleReferenceNormalization,
                 )
-                PanelMessages(state)
+                PanelMessages(state, onDownloadUpdate)
                 SampleList(
                     visibleMeasurements = visibleMeasurements,
                     selectedIndex = state.selectedIndex,
@@ -374,46 +347,40 @@ private fun ControlPanel(
 @Composable
 private fun PanelHeader(
     state: ViewerUiState,
+    showActions: Boolean,
     onOpenFile: () -> Unit,
     onExport: () -> Unit,
-    updateButtonLabel: String,
-    onCheckUpdates: () -> Unit,
-    onToggleReferenceSpectrum: (String) -> Unit,
-    onCycleReferenceNormalization: () -> Unit,
 ) {
-    var showReferencePicker by remember { mutableStateOf(false) }
-
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onOpenFile, modifier = Modifier.weight(1f)) {
-                Text("Import")
-            }
-            Button(
-                onClick = onExport,
-                modifier = Modifier.weight(1f),
-                enabled = state.worksheet != null && !state.isLoading
-            ) {
-                Text("Export")
-            }
-            Button(
-                onClick = { showReferencePicker = true },
-                modifier = Modifier.weight(1f),
-                enabled = state.referenceSpectra.isNotEmpty()
-            ) {
-                Text("References")
-            }
-            Button(
-                onClick = onCycleReferenceNormalization,
-                modifier = Modifier.weight(1f),
-                enabled = state.referenceSpectra.isNotEmpty()
-            ) {
-                Text(state.referenceNormalizationMode.label, maxLines = 1)
-            }
-        }
+        if (showActions) {
+            BoxWithConstraints {
+                val buttonFontSize = when {
+                    maxWidth < 320.dp -> 9.sp
+                    maxWidth < 420.dp -> 10.sp
+                    else -> 12.sp
+                }
+                val buttonPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onCheckUpdates, modifier = Modifier.fillMaxWidth()) {
-                Text(updateButtonLabel)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = onOpenFile,
+                        modifier = Modifier.weight(1f).height(40.dp),
+                        contentPadding = buttonPadding,
+                    ) {
+                        ActionButtonText("Import", buttonFontSize)
+                    }
+                    Button(
+                        onClick = onExport,
+                        modifier = Modifier.weight(1f).height(40.dp),
+                        enabled = state.worksheet != null && !state.isLoading,
+                        contentPadding = buttonPadding,
+                    ) {
+                        ActionButtonText("Export", buttonFontSize)
+                    }
+                }
             }
         }
 
@@ -435,19 +402,26 @@ private fun PanelHeader(
             overflow = TextOverflow.Ellipsis
         )
     }
-
-    if (showReferencePicker) {
-        ReferenceSpectrumDialog(
-            spectra = state.referenceSpectra,
-            selectedIds = state.selectedReferenceIds,
-            onToggle = onToggleReferenceSpectrum,
-            onDismiss = { showReferencePicker = false },
-        )
-    }
 }
 
 @Composable
-private fun PanelMessages(state: ViewerUiState) {
+private fun ActionButtonText(label: String, fontSize: androidx.compose.ui.unit.TextUnit) {
+    Text(
+        text = label,
+        maxLines = 1,
+        softWrap = false,
+        overflow = TextOverflow.Clip,
+        textAlign = TextAlign.Center,
+        fontSize = fontSize,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+@Composable
+private fun PanelMessages(
+    state: ViewerUiState,
+    onDownloadUpdate: (String) -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         state.errorMessage?.let {
             Text(it, color = Color(0xFFB42318))
@@ -458,7 +432,34 @@ private fun PanelMessages(state: ViewerUiState) {
         }
 
         state.updateStatusMessage?.let {
-            Text(it, color = Color(0xFF175CD3))
+            if (state.availableUpdate != null) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F1FF)),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = it,
+                            color = Color(0xFF175CD3),
+                            modifier = Modifier.weight(1f),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            fontSize = 13.sp,
+                        )
+                        TextButton(onClick = { onDownloadUpdate(state.availableUpdate.downloadUrl) }) {
+                            Text("Download", maxLines = 1)
+                        }
+                    }
+                }
+            } else {
+                Text(it, color = Color(0xFF175CD3))
+            }
         }
 
         if (state.isLoading) {
@@ -545,9 +546,19 @@ private fun RightPanel(
     summaryItems: List<Pair<String, String>>,
     referenceSpectra: List<ReferenceSpectrum>,
     referenceNormalizationMode: ReferenceNormalizationMode,
+    availableReferenceSpectra: List<ReferenceSpectrum>,
+    selectedReferenceIds: Set<String>,
+    onOpenFile: () -> Unit,
+    onExport: () -> Unit,
+    showTopActions: Boolean,
+    onToggleReferenceSpectrum: (String) -> Unit,
+    onCycleReferenceNormalization: () -> Unit,
+    onCheckUpdates: () -> Unit,
+    onDownloadUpdate: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showReferenceDialog by remember { mutableStateOf(false) }
+    var showReferencePicker by remember { mutableStateOf(false) }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -565,6 +576,37 @@ private fun RightPanel(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                if (showTopActions) {
+                    BoxWithConstraints {
+                        val buttonFontSize = when {
+                            maxWidth < 320.dp -> 9.sp
+                            maxWidth < 420.dp -> 10.sp
+                            else -> 12.sp
+                        }
+                        val buttonPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = onOpenFile,
+                                modifier = Modifier.weight(1f).height(40.dp),
+                                contentPadding = buttonPadding,
+                            ) {
+                                ActionButtonText("Import", buttonFontSize)
+                            }
+                            Button(
+                                onClick = onExport,
+                                modifier = Modifier.weight(1f).height(40.dp),
+                                contentPadding = buttonPadding,
+                            ) {
+                                ActionButtonText("Export", buttonFontSize)
+                            }
+                        }
+                    }
+                }
+
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -580,6 +622,10 @@ private fun RightPanel(
                     referenceSpectra = referenceSpectra,
                     referenceNormalizationMode = referenceNormalizationMode,
                     onShowReference = { showReferenceDialog = true },
+                    onShowReferencePicker = { showReferencePicker = true },
+                    onCycleReferenceNormalization = onCycleReferenceNormalization,
+                    onCheckUpdates = onCheckUpdates,
+                    onDownloadUpdate = onDownloadUpdate,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
@@ -590,6 +636,15 @@ private fun RightPanel(
 
     if (showReferenceDialog) {
         NanoDropReferenceDialog(onDismiss = { showReferenceDialog = false })
+    }
+
+    if (showReferencePicker) {
+        ReferenceSpectrumDialog(
+            spectra = availableReferenceSpectra,
+            selectedIds = selectedReferenceIds,
+            onToggle = onToggleReferenceSpectrum,
+            onDismiss = { showReferencePicker = false },
+        )
     }
 }
 
@@ -685,6 +740,10 @@ private fun SpectrumChart(
     referenceSpectra: List<ReferenceSpectrum>,
     referenceNormalizationMode: ReferenceNormalizationMode,
     onShowReference: () -> Unit,
+    onShowReferencePicker: () -> Unit,
+    onCycleReferenceNormalization: () -> Unit,
+    onCheckUpdates: () -> Unit,
+    onDownloadUpdate: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val baseMinX = 220.0
@@ -725,16 +784,52 @@ private fun SpectrumChart(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Absrobance(nm)",
-                fontWeight = FontWeight.SemiBold
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onShowReference) {
-                    Text("Info")
+            Row(
+                modifier = Modifier.weight(1f, fill = false),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Absrob.(nm)",
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF667085)
+                )
+                Button(onClick = onShowReference, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)) {
+                    Text("Info", maxLines = 1)
                 }
-                Button(onClick = { viewport = fullViewport }) {
-                    Text("Reset Zoom")
+                Button(onClick = onShowReferencePicker, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)) {
+                    Text("Reference", maxLines = 1)
+                }
+                Button(onClick = onCycleReferenceNormalization, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)) {
+                    Text(referenceNormalizationMode.label, maxLines = 1)
+                }
+            }
+            Box {
+                var showOverflowMenu by remember { mutableStateOf(false) }
+                TextButton(
+                    onClick = { showOverflowMenu = true },
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                ) {
+                    Text("⋮", fontSize = 18.sp, maxLines = 1)
+                }
+                DropdownMenu(
+                    expanded = showOverflowMenu,
+                    onDismissRequest = { showOverflowMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Check for Updates") },
+                        onClick = {
+                            showOverflowMenu = false
+                            onCheckUpdates()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Open Latest Release") },
+                        onClick = {
+                            showOverflowMenu = false
+                            onDownloadUpdate("https://github.com/SavannaChow/Nanodrop2000-Viewer/releases/latest")
+                        }
+                    )
                 }
             }
         }
@@ -767,7 +862,7 @@ private fun SpectrumChart(
                     detectTapGestures { tapOffset ->
                         val leftPadding = 72f
                         val bottomPadding = 48f
-                        val topPadding = 20f
+                        val topPadding = 44f
                         val rightPadding = 16f
                         val plotWidth = size.width - leftPadding - rightPadding
                         val plotHeight = size.height - topPadding - bottomPadding
@@ -857,7 +952,7 @@ private fun SpectrumChart(
         ) {
             val leftPadding = 72f
             val bottomPadding = 48f
-            val topPadding = 20f
+            val topPadding = 44f
             val rightPadding = 16f
             val plotWidth = size.width - leftPadding - rightPadding
             val plotHeight = size.height - topPadding - bottomPadding

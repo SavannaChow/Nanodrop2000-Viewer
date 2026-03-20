@@ -24,8 +24,12 @@
                     <StackPanel Orientation="Horizontal">
                         <Button Content="Import" Margin="0,0,8,0" Padding="14,8" Command="{Binding ImportCommand}" />
                         <Button Content="Export" Margin="0,0,8,0" Padding="14,8" Command="{Binding ExportCommand}" />
-                        <Button Content="{Binding UpdateButtonLabel}" Margin="0,0,8,0" Padding="14,8" Command="{Binding CheckUpdatesCommand}" />
                         <Button Content="Info" Padding="14,8" Click="HandleInfoClick" />
+                        <Menu Margin="8,0,0,0" Background="Transparent">
+                            <MenuItem Header="⋮">
+                                <MenuItem Header="Check for Updates" Command="{Binding CheckUpdatesCommand}" />
+                            </MenuItem>
+                        </Menu>
                     </StackPanel>
                     <TextBlock Margin="0,12,0,0"
                                Text="{Binding FileName}"
@@ -39,6 +43,35 @@
                                Text="{Binding UpdateStatusMessage}"
                                TextWrapping="Wrap"
                                Foreground="#FF175CD3" />
+                    <Border Margin="0,8,0,0"
+                            Padding="12,10"
+                            BorderBrush="#FFB2CCFF"
+                            BorderThickness="1"
+                            CornerRadius="12"
+                            Background="#FFE8F1FF">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasAvailableUpdate}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <DockPanel LastChildFill="False">
+                            <TextBlock DockPanel.Dock="Left"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding UpdateStatusMessage}"
+                                       TextWrapping="Wrap"
+                                       Foreground="#FF175CD3" />
+                            <Button DockPanel.Dock="Right"
+                                    Margin="12,0,0,0"
+                                    Padding="12,6"
+                                    Content="Download"
+                                    Command="{Binding DownloadUpdateCommand}" />
+                        </DockPanel>
+                    </Border>
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">

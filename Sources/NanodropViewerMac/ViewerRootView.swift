@@ -70,14 +70,6 @@ struct ViewerRootView: View {
         .sheet(isPresented: $viewModel.isShowingInfo) {
             ViewerInfoSheet()
         }
-        .alert("Update Available", isPresented: $viewModel.isShowingUpdatePrompt, presenting: viewModel.updateInfo) { update in
-            Button("Download") {
-                viewModel.downloadUpdate()
-            }
-            Button("Later", role: .cancel) {}
-        } message: { update in
-            Text("Current version: \(UpdateService.currentVersion())\nLatest version: \(update.version)")
-        }
         .onDrop(of: [UTType.fileURL.identifier], isTargeted: nil, perform: handleDrop(providers:))
     }
 
@@ -97,12 +89,17 @@ struct ViewerRootView: View {
                 .frame(maxWidth: .infinity)
                 .disabled(viewModel.worksheet == nil || viewModel.isLoading)
 
-                Button(viewModel.updateButtonTitle) {
-                    Task {
-                        await viewModel.checkForUpdates(showNoUpdateMessage: true)
+                Menu {
+                    Button("Check for Updates") {
+                        Task {
+                            await viewModel.checkForUpdates(showNoUpdateMessage: true)
+                        }
                     }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.title3)
+                        .frame(width: 34)
                 }
-                .frame(maxWidth: .infinity)
             }
 
             Menu("Reference Spectra") {
@@ -145,8 +142,22 @@ struct ViewerRootView: View {
             }
 
             if let updateStatusMessage = viewModel.updateStatusMessage {
-                Text(updateStatusMessage)
-                    .foregroundStyle(.blue)
+                if viewModel.hasAvailableUpdate {
+                    HStack(spacing: 8) {
+                        Text(updateStatusMessage)
+                            .foregroundStyle(.blue)
+                            .lineLimit(2)
+                        Spacer(minLength: 0)
+                        Button("Download") {
+                            viewModel.downloadUpdate()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    }
+                } else {
+                    Text(updateStatusMessage)
+                        .foregroundStyle(.blue)
+                }
             }
 
             if viewModel.isLoading {

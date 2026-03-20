@@ -19,7 +19,6 @@ final class ViewerViewModel: ObservableObject {
     @Published var selectedReferenceIDs: Set<String> = []
     @Published var referenceNormalizationMode: ReferenceNormalizationMode = .peakNormalize
     @Published var updateInfo: AppUpdateInfo?
-    @Published var isShowingUpdatePrompt = false
     @Published var updateStatusMessage: String?
     private var hasCheckedForUpdates = false
 
@@ -57,9 +56,7 @@ final class ViewerViewModel: ObservableObject {
         fileURL?.lastPathComponent ?? "No file selected"
     }
 
-    var updateButtonTitle: String {
-        updateInfo.map { "Update \($0.version)" } ?? "Check Updates"
-    }
+    var hasAvailableUpdate: Bool { updateInfo != nil }
 
     var selectedReferenceSpectra: [ReferenceSpectrum] {
         availableReferenceSpectra.filter { selectedReferenceIDs.contains($0.id) }
@@ -195,7 +192,6 @@ final class ViewerViewModel: ObservableObject {
             if let update = try await UpdateService.checkForUpdate() {
                 updateInfo = update
                 updateStatusMessage = "Update \(update.version) is available."
-                isShowingUpdatePrompt = true
             } else if showNoUpdateMessage {
                 updateInfo = nil
                 updateStatusMessage = "You are up to date."

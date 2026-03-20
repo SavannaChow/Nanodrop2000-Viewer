@@ -32,23 +32,22 @@ The `main` branch is the integrated release branch that contains:
 Use a consistent versioned naming scheme for release assets:
 
 - macOS:
-  - `nanodrop2000viewer-macos-vX.Y.Z.zip`
+  - `nanodrop2000viewer-macos-vX.X.X.dmg`
 - Android:
-  - `nanodrop2000viewer-android-vX.Y.Z.apk`
+  - `nanodrop2000viewer-android-vX.X.X.apk`
 - Windows:
-  - `nanodrop2000viewer-windows-vX.Y.Z.zip`
-  - or `nanodrop2000viewer-windows-vX.Y.Z-installer.exe`
+  - `nanodrop2000viewer-windows-vX.X.X-x64.zip`
+  - or `nanodrop2000viewer-windows-vX.X.X-installer.exe`
 
 If architecture matters, append it explicitly:
 
-- `nanodrop2000viewer-windows-vX.Y.Z-x64.zip`
-- `nanodrop2000viewer-macos-vX.Y.Z-arm64.zip`
+- `nanodrop2000viewer-windows-vX.X.X-x64.zip`
 
 ## What goes into GitHub Releases
 
 Recommended release assets:
 
-- signed/notarized macOS app bundle packaged as `.zip`
+- signed/notarized macOS app packaged as `.dmg`
 - Android `apk`
 - Windows portable `.zip` or installer `.exe`
 
@@ -62,6 +61,33 @@ Keep release artifacts attached to GitHub Releases instead.
 - Windows builds from `windows-app/`
 - Shared `.jdx` files live only under `spectrum_database/`
 - Platform builds should sync or embed from `spectrum_database/`, not maintain hand-edited copies
+
+## Unified release script
+
+This repository includes a top-level helper script:
+
+```bash
+./scripts/build-release-assets.sh
+```
+
+Behavior:
+
+- On macOS:
+  - builds the macOS app and DMG
+  - builds the Android debug APK
+  - copies the release-named assets into `dist/`
+- On Windows:
+  - runs the Windows publish script
+  - creates the Windows zip
+  - copies the release-named asset into `dist/`
+
+The script validates that macOS, Android, and Windows version numbers match before building.
+
+Expected outputs in `dist/`:
+
+- `nanodrop2000viewer-macos-vX.X.X.dmg`
+- `nanodrop2000viewer-android-vX.X.X.apk`
+- `nanodrop2000viewer-windows-vX.X.X-x64.zip`
 
 ### Android build and rename
 
@@ -82,7 +108,7 @@ Recommended release asset rename:
 
 ```bash
 cp "android-app/app/build/outputs/apk/debug/app-debug.apk" \
-   "android-app/app/build/outputs/apk/debug/nanodrop2000viewer-android-vX.Y.Z.apk"
+   "android-app/app/build/outputs/apk/debug/nanodrop2000viewer-android-vX.X.X.apk"
 ```
 
 If you later produce a release build, keep the same versioned naming pattern and avoid uploading the raw `app-debug.apk` filename to GitHub Releases.
@@ -126,13 +152,13 @@ Recommended release asset rename:
 
 ```powershell
 Copy-Item "windows-app\dist\NanodropViewer-win-x64.zip" `
-          "windows-app\dist\nanodrop2000viewer-windows-vX.Y.Z-x64.zip"
+          "windows-app\dist\nanodrop2000viewer-windows-vX.X.X-x64.zip"
 ```
 
 If you publish an installer instead of a zip, use:
 
 ```text
-nanodrop2000viewer-windows-vX.Y.Z-installer.exe
+nanodrop2000viewer-windows-vX.X.X-installer.exe
 ```
 
 ## Suggested release notes structure

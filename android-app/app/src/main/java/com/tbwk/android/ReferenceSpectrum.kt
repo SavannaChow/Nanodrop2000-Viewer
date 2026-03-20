@@ -3,9 +3,9 @@ package com.tbwk.android
 import android.content.Context
 
 enum class ReferenceNormalizationMode(val label: String) {
-    PEAK_NORMALIZE("Peak Normalize"),
-    AREA_NORMALIZE("Area Normalize"),
-    FIT_TO_SAMPLE("Fit To Sample"),
+    PEAK_NORMALIZE("Peak Norm"),
+    AREA_NORMALIZE("Area Norm"),
+    FIT_TO_SAMPLE("Fit Sample"),
 }
 
 data class ReferenceSpectrum(
