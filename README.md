@@ -88,17 +88,25 @@ iPad、iPhone抱歉目前還沒有支援，因為iOS本身限制很多，要能�
 - 開啟 `.dmg` 後，可直接把 `nanodrop 2000 viewer.app` 拖曳到 `Applications`
 - 支援 `.tbwk` / `.twbk` 檔案關聯
 
+
+
 如果 macOS 顯示無法開啟，通常是因為 Gatekeeper 對未簽名 app 的保護機制。可用以下方式處理：
+
+1. 在App按右鍵，選Open
+
+2. 開啟Terminal執行
 
 ```bash
 xattr -dr com.apple.quarantine "/Applications/nanodrop 2000 viewer.app"
 ```
 
-如果你是直接在下載資料夾測試，也可以改成實際路徑，例如：
+3.如果還是不行，再加上
 
+開啟Terminal執行
 ```bash
-xattr -dr com.apple.quarantine "$HOME/Downloads/nanodrop 2000 viewer.app"
+codesign --force --deep --sign - "/Applications/nanodrop 2000 viewer.app"
 ```
+
 
 ### Android
 
