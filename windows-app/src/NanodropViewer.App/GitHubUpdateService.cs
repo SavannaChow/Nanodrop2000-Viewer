@@ -34,7 +34,7 @@ internal static class GitHubUpdateService
         var release = await JsonSerializer.DeserializeAsync<GitHubReleaseResponse>(stream).ConfigureAwait(false);
         if (release is null)
         {
-            return null;
+            throw new InvalidOperationException("GitHub latest release response was empty.");
         }
 
         var latestVersion = NormalizeVersion(release.TagName);
