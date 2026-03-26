@@ -17,6 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -33,6 +34,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -46,13 +48,17 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -72,6 +78,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -85,6 +92,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.net.toUri
 import kotlinx.coroutines.launch
+import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
     private val viewModel by viewModels<MainViewModel>()
@@ -115,6 +124,11 @@ class MainActivity : ComponentActivity() {
                         viewModel.exportCurrentWorksheet(this, it)
                     }
                 }
+                val saveEditedPicker = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.CreateDocument("application/octet-stream")
+                ) { uri ->
+                    uri?.let { viewModel.saveEditedWorksheet(this, it) }
+                }
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -124,6 +138,7 @@ class MainActivity : ComponentActivity() {
                         viewModel = viewModel,
                         onOpenFile = { picker.launch(arrayOf("*/*")) },
                         onExport = { exportPicker.launch(null) },
+                        onSaveEdited = { saveEditedPicker.launch(viewModel.suggestedEditedFileName()) },
                         onDownloadUpdate = { url ->
                             startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                         },
@@ -154,6 +169,7 @@ private fun ViewerScreen(
     viewModel: MainViewModel,
     onOpenFile: () -> Unit,
     onExport: () -> Unit,
+    onSaveEdited: () -> Unit,
     onDownloadUpdate: (String) -> Unit,
 ) {
     val state = viewModel.uiState
@@ -161,6 +177,9 @@ private fun ViewerScreen(
     val selectedReferenceSpectra = viewModel.selectedReferenceSpectra()
     val visibleMeasurements = viewModel.visibleMeasurements()
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    var renameDraft by remember(measurement?.title) { mutableStateOf(measurement?.title.orEmpty()) }
+    var showRenameDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.checkForUpdatesIfNeeded()
@@ -181,6 +200,15 @@ private fun ViewerScreen(
                 onExport = onExport,
                 onMoveSelection = viewModel::moveSelection,
                 onSelectSample = viewModel::selectSample,
+                onRenameSample = { index, title ->
+                    viewModel.selectSample(index)
+                    renameDraft = title
+                    showRenameDialog = true
+                },
+                onDeleteSample = { index, _ ->
+                    viewModel.selectSample(index)
+                    showDeleteDialog = true
+                },
                 onDownloadUpdate = onDownloadUpdate,
                 modifier = Modifier
                     .fillMaxHeight()
@@ -193,14 +221,21 @@ private fun ViewerScreen(
                 referenceSpectra = selectedReferenceSpectra,
                 referenceNormalizationMode = state.referenceNormalizationMode,
                 hasAvailableUpdate = state.availableUpdate != null,
+                hasEditedChanges = state.hasEditedChanges,
                 currentVersion = BuildConfig.VERSION_NAME,
                 latestVersion = state.latestVersion,
                 availableReferenceSpectra = state.referenceSpectra,
                 selectedReferenceIds = state.selectedReferenceIds,
                 onOpenFile = onOpenFile,
                 onExport = onExport,
+                onSaveEdited = onSaveEdited,
                 showTopActions = false,
                 onToggleReferenceSpectrum = viewModel::toggleReferenceSpectrum,
+                onRenameSelectedSample = {
+                    renameDraft = measurement?.title.orEmpty()
+                    showRenameDialog = true
+                },
+                onDeleteSelectedSample = { showDeleteDialog = true },
                 onCycleReferenceNormalization = {
                     viewModel.setReferenceNormalizationMode(
                         when (state.referenceNormalizationMode) {
@@ -240,14 +275,21 @@ private fun ViewerScreen(
                     referenceSpectra = selectedReferenceSpectra,
                     referenceNormalizationMode = state.referenceNormalizationMode,
                     hasAvailableUpdate = state.availableUpdate != null,
+                    hasEditedChanges = state.hasEditedChanges,
                     currentVersion = BuildConfig.VERSION_NAME,
-                    latestVersion = state.latestVersion,
-                    availableReferenceSpectra = state.referenceSpectra,
-                    selectedReferenceIds = state.selectedReferenceIds,
-                    onOpenFile = onOpenFile,
-                    onExport = onExport,
-                    showTopActions = true,
-                    onToggleReferenceSpectrum = viewModel::toggleReferenceSpectrum,
+                latestVersion = state.latestVersion,
+                availableReferenceSpectra = state.referenceSpectra,
+                selectedReferenceIds = state.selectedReferenceIds,
+                onOpenFile = onOpenFile,
+                onExport = onExport,
+                onSaveEdited = onSaveEdited,
+                showTopActions = true,
+                onToggleReferenceSpectrum = viewModel::toggleReferenceSpectrum,
+                    onRenameSelectedSample = {
+                        renameDraft = measurement?.title.orEmpty()
+                        showRenameDialog = true
+                    },
+                    onDeleteSelectedSample = { showDeleteDialog = true },
                     onCycleReferenceNormalization = {
                         viewModel.setReferenceNormalizationMode(
                             when (state.referenceNormalizationMode) {
@@ -287,6 +329,15 @@ private fun ViewerScreen(
                     onExport = onExport,
                     onMoveSelection = viewModel::moveSelection,
                     onSelectSample = viewModel::selectSample,
+                    onRenameSample = { index, title ->
+                        viewModel.selectSample(index)
+                        renameDraft = title
+                        showRenameDialog = true
+                    },
+                    onDeleteSample = { index, _ ->
+                        viewModel.selectSample(index)
+                        showDeleteDialog = true
+                    },
                     onDownloadUpdate = onDownloadUpdate,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -294,6 +345,60 @@ private fun ViewerScreen(
                 )
             }
         }
+    }
+
+    if (showRenameDialog && measurement != null) {
+        AlertDialog(
+            onDismissRequest = { showRenameDialog = false },
+            title = { Text("Rename sample") },
+            text = {
+                OutlinedTextField(
+                    value = renameDraft,
+                    onValueChange = { renameDraft = it },
+                    singleLine = true,
+                    label = { Text("Sample name") }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.renameSelectedMeasurement(renameDraft)
+                        showRenameDialog = false
+                    },
+                    enabled = renameDraft.trim().isNotEmpty()
+                ) {
+                    Text("Rename")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRenameDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showDeleteDialog && measurement != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete sample?") },
+            text = { Text("Remove \"${measurement.title}\" from the edited copy. The original TBWK file will not be overwritten.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteSelectedMeasurement()
+                        showDeleteDialog = false
+                    }
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -306,6 +411,8 @@ private fun ControlPanel(
     onExport: () -> Unit,
     onMoveSelection: (Int) -> Unit,
     onSelectSample: (Int) -> Unit,
+    onRenameSample: (Int, String) -> Unit,
+    onDeleteSample: (Int, String) -> Unit,
     onDownloadUpdate: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -332,6 +439,8 @@ private fun ControlPanel(
                     visibleMeasurements = visibleMeasurements,
                     selectedIndex = state.selectedIndex,
                     onSelectSample = onSelectSample,
+                    onRenameSample = onRenameSample,
+                    onDeleteSample = onDeleteSample,
                     modifier = Modifier.weight(1f)
                 )
                 SelectionButtons(onMoveSelection)
@@ -354,6 +463,8 @@ private fun ControlPanel(
                     visibleMeasurements = visibleMeasurements,
                     selectedIndex = state.selectedIndex,
                     onSelectSample = onSelectSample,
+                    onRenameSample = onRenameSample,
+                    onDeleteSample = onDeleteSample,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
@@ -509,10 +620,13 @@ private fun SampleList(
     visibleMeasurements: List<Pair<Int, Measurement>>,
     selectedIndex: Int,
     onSelectSample: (Int) -> Unit,
+    onRenameSample: (Int, String) -> Unit,
+    onDeleteSample: (Int, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+    var openSwipeIndex by remember { mutableStateOf<Int?>(null) }
     val selectedPosition = remember(visibleMeasurements, selectedIndex) {
         visibleMeasurements.indexOfFirst { it.first == selectedIndex }
     }
@@ -534,26 +648,136 @@ private fun SampleList(
             val selected = index == selectedIndex
             val background = if (selected) Color(0xFF0F6CBD) else Color(0xFFF4F6FA)
             val textColor = if (selected) Color.White else Color(0xFF172033)
+            val renameWidthDp = 94.dp
+            val deleteWidthDp = 88.dp
+            val renameWidthPx = with(LocalDensity.current) { renameWidthDp.toPx() }
+            val deleteWidthPx = with(LocalDensity.current) { deleteWidthDp.toPx() }
+            val totalActionWidthPx = renameWidthPx + deleteWidthPx
+            val totalActionWidthDp = renameWidthDp + deleteWidthDp
+            val revealThresholdPx = totalActionWidthPx * 0.35f
+            val offsetX = remember(index) { Animatable(0f) }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(background, RoundedCornerShape(16.dp))
-                    .clickable {
-                        onSelectSample(index)
-                        coroutineScope.launch {
-                            listState.animateScrollToItem(visibleMeasurements.indexOfFirst { it.first == index })
-                        }
+            LaunchedEffect(openSwipeIndex) {
+                if (openSwipeIndex != index && offsetX.value != 0f) {
+                    offsetX.animateTo(0f, animationSpec = tween(durationMillis = 180))
+                }
+            }
+
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 6.dp)
+                        .width(totalActionWidthDp)
+                        .height(44.dp),
+                    horizontalArrangement = Arrangement.spacedBy(0.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(renameWidthDp)
+                            .fillMaxHeight()
+                            .background(
+                                Color(0xFFD92D20),
+                                RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
+                            )
+                            .clickable {
+                                onSelectSample(index)
+                                onRenameSample(index, measurement.title)
+                                openSwipeIndex = null
+                                coroutineScope.launch {
+                                    offsetX.animateTo(0f, animationSpec = tween(durationMillis = 160))
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Rename",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
+                        )
                     }
-                    .padding(horizontal = 12.dp, vertical = 10.dp)
-            ) {
-                Text(
-                    text = "#${displayIndex + 1} ${measurement.title}",
-                    color = textColor,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+
+                    Box(
+                        modifier = Modifier
+                            .width(deleteWidthDp)
+                            .fillMaxHeight()
+                            .background(
+                                Color(0xFFB42318),
+                                RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp)
+                            )
+                            .clickable {
+                                onSelectSample(index)
+                                onDeleteSample(index, measurement.title)
+                                openSwipeIndex = null
+                                coroutineScope.launch {
+                                    offsetX.animateTo(0f, animationSpec = tween(durationMillis = 160))
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Delete",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                        .background(background, RoundedCornerShape(16.dp))
+                        .pointerInput(index, openSwipeIndex) {
+                            detectHorizontalDragGestures(
+                                onDragStart = {
+                                    coroutineScope.launch { offsetX.stop() }
+                                },
+                                onHorizontalDrag = { _, dragAmount ->
+                                    val current = offsetX.value
+                                    val next = when {
+                                        current == 0f && dragAmount > 0f -> 0f
+                                        else -> (current + dragAmount).coerceIn(-totalActionWidthPx, 0f)
+                                    }
+                                    coroutineScope.launch { offsetX.snapTo(next) }
+                                },
+                                onDragEnd = {
+                                    val shouldOpen = offsetX.value <= -revealThresholdPx
+                                    coroutineScope.launch {
+                                        offsetX.animateTo(
+                                            targetValue = if (shouldOpen) -totalActionWidthPx else 0f,
+                                            animationSpec = tween(durationMillis = 180)
+                                        )
+                                    }
+                                    openSwipeIndex = if (shouldOpen) index else null
+                                }
+                            )
+                        }
+                        .clickable {
+                            if (offsetX.value != 0f) {
+                                openSwipeIndex = null
+                                coroutineScope.launch {
+                                    offsetX.animateTo(0f, animationSpec = tween(durationMillis = 160))
+                                }
+                                return@clickable
+                            }
+                            onSelectSample(index)
+                            coroutineScope.launch {
+                                listState.animateScrollToItem(visibleMeasurements.indexOfFirst { it.first == index })
+                            }
+                        }
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    Text(
+                        text = "#${displayIndex + 1} ${measurement.title}",
+                        color = textColor,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
     }
@@ -567,14 +791,18 @@ private fun RightPanel(
     referenceSpectra: List<ReferenceSpectrum>,
     referenceNormalizationMode: ReferenceNormalizationMode,
     hasAvailableUpdate: Boolean,
+    hasEditedChanges: Boolean,
     currentVersion: String,
     latestVersion: String?,
     availableReferenceSpectra: List<ReferenceSpectrum>,
     selectedReferenceIds: Set<String>,
     onOpenFile: () -> Unit,
     onExport: () -> Unit,
+    onSaveEdited: () -> Unit,
     showTopActions: Boolean,
     onToggleReferenceSpectrum: (String) -> Unit,
+    onRenameSelectedSample: () -> Unit,
+    onDeleteSelectedSample: () -> Unit,
     onCycleReferenceNormalization: () -> Unit,
     onCheckUpdates: () -> Unit,
     onDownloadUpdate: (String) -> Unit,
@@ -623,6 +851,15 @@ private fun RightPanel(
                             ) {
                                 ActionButtonText("Export", buttonFontSize)
                             }
+                            if (hasEditedChanges) {
+                                Button(
+                                    onClick = onSaveEdited,
+                                    modifier = Modifier.weight(1f).height(40.dp),
+                                    contentPadding = buttonPadding,
+                                ) {
+                                    ActionButtonText("Save", buttonFontSize)
+                                }
+                            }
                         }
                     }
                 }
@@ -665,6 +902,15 @@ private fun RightPanel(
                             ) {
                                 ActionButtonText("Export", buttonFontSize)
                             }
+                            if (hasEditedChanges) {
+                                Button(
+                                    onClick = onSaveEdited,
+                                    modifier = Modifier.weight(1f).height(40.dp),
+                                    contentPadding = buttonPadding,
+                                ) {
+                                    ActionButtonText("Save", buttonFontSize)
+                                }
+                            }
                         }
                     }
                 }
@@ -684,10 +930,14 @@ private fun RightPanel(
                     referenceSpectra = referenceSpectra,
                     referenceNormalizationMode = referenceNormalizationMode,
                     hasAvailableUpdate = hasAvailableUpdate,
+                    hasEditedChanges = hasEditedChanges,
                     currentVersion = currentVersion,
                     latestVersion = latestVersion,
                     onShowReference = { showReferenceDialog = true },
                     onShowReferencePicker = { showReferencePicker = true },
+                    onSaveEdited = onSaveEdited,
+                    onRenameSelectedSample = onRenameSelectedSample,
+                    onDeleteSelectedSample = onDeleteSelectedSample,
                     onCycleReferenceNormalization = onCycleReferenceNormalization,
                     onCheckUpdates = onCheckUpdates,
                     onDownloadUpdate = onDownloadUpdate,
@@ -805,10 +1055,14 @@ private fun SpectrumChart(
     referenceSpectra: List<ReferenceSpectrum>,
     referenceNormalizationMode: ReferenceNormalizationMode,
     hasAvailableUpdate: Boolean,
+    hasEditedChanges: Boolean,
     currentVersion: String,
     latestVersion: String?,
     onShowReference: () -> Unit,
     onShowReferencePicker: () -> Unit,
+    onSaveEdited: () -> Unit,
+    onRenameSelectedSample: () -> Unit,
+    onDeleteSelectedSample: () -> Unit,
     onCycleReferenceNormalization: () -> Unit,
     onCheckUpdates: () -> Unit,
     onDownloadUpdate: (String) -> Unit,
@@ -906,6 +1160,20 @@ private fun SpectrumChart(
                         enabled = false
                     )
                     HorizontalDivider()
+                    DropdownMenuItem(
+                        text = { Text("Rename Selected Sample") },
+                        onClick = {
+                            showOverflowMenu = false
+                            onRenameSelectedSample()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete Selected Sample") },
+                        onClick = {
+                            showOverflowMenu = false
+                            onDeleteSelectedSample()
+                        }
+                    )
                     DropdownMenuItem(
                         text = { Text("Check for Updates") },
                         onClick = {
