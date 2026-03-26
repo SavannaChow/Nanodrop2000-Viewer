@@ -18,6 +18,7 @@ namespace NanodropViewer.App;
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
     private Worksheet? _worksheet;
+    private TbwkEditableDocument? _editableDocument;
     private string _fileName = "No file selected";
     private string _statusMessage = "Import a TBWK file to begin.";
     private ObservableCollection<SpectrumSeriesItem> _plotSeries = new();
@@ -29,6 +30,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private AppUpdateInfo? _availableUpdate;
     private string? _latestVersion;
     private bool _hasCheckedForUpdates;
+    private bool _hasEditedChanges;
     private readonly DispatcherTimer _transientMessageTimer = new() { Interval = TimeSpan.FromSeconds(3.5) };
     private string? _pendingStatusMessageToClear;
     private string? _pendingUpdateMessageToClear;
@@ -138,10 +140,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     public bool HasWorksheet => _worksheet is not null;
+    public bool HasEditedChanges
+    {
+        get => _hasEditedChanges;
+        private set => SetProperty(ref _hasEditedChanges, value);
+    }
     public bool HasMultipleSelectedSamples => _selectedSamples.Count > 1;
     public bool CanMovePrevious => SelectedSample is not null && SamplePosition(SelectedSample) > 0;
     public bool CanMoveNext => SelectedSample is not null && SamplePosition(SelectedSample) < Samples.Count - 1;
     public bool HasSelectedReferences => ReferenceOptions.Any(item => item.IsSelected);
+    public bool CanEditSelectedSample => SelectedSample is not null && _editableDocument is not null;
 
     public SampleItem? SelectedSample
     {
@@ -159,28 +167,64 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void LoadFile(string filePath)
     {
-        var worksheet = TbwkParser.Parse(filePath);
-        _worksheet = worksheet;
+        var bytes = File.ReadAllBytes(filePath);
+        _editableDocument = TbwkEditableDocument.Parse(bytes);
+        var worksheet = _editableDocument.Worksheet();
         _currentFilePath = filePath;
-
-        Samples.Clear();
-        _selectedSamples.Clear();
-        var ordered = worksheet.Measurements
-            .Select((measurement, index) => new { Index = index, Measurement = measurement })
-            .OrderBy(item => item.Measurement.Time)
-            .ThenBy(item => item.Index)
-            .ToArray();
-
-        for (var displayOrder = 0; displayOrder < ordered.Length; displayOrder++)
-        {
-            Samples.Add(new SampleItem(ordered[displayOrder].Index, displayOrder, ordered[displayOrder].Measurement));
-        }
-
+        HasEditedChanges = false;
+        LoadWorksheet(worksheet);
         FileName = Path.GetFileName(filePath);
-        SelectedSample = Samples.FirstOrDefault();
-        UpdateSelectedSamples(SelectedSample is null ? Array.Empty<SampleItem>() : new[] { SelectedSample });
         StatusMessage = $"Loaded {worksheet.Measurements.Count} samples. Reference spectra: {ReferenceOptions.Count}.";
         RaiseCommandStates();
+    }
+
+    public void RenameSelectedSample(string newName)
+    {
+        if (_editableDocument is null || SelectedSample is null)
+        {
+            return;
+        }
+
+        _editableDocument.RenameMeasurement(SelectedSample.Index, newName);
+        HasEditedChanges = true;
+        ReloadEditedWorksheet(SelectedSample.Index);
+    }
+
+    public void DeleteSelectedSample()
+    {
+        if (_editableDocument is null || SelectedSample is null)
+        {
+            return;
+        }
+
+        var deletedIndex = SelectedSample.Index;
+        _editableDocument.DeleteMeasurement(deletedIndex);
+        HasEditedChanges = true;
+        ReloadEditedWorksheet(Math.Max(0, deletedIndex - 1));
+    }
+
+    public string SuggestedEditedFilePath()
+    {
+        var currentPath = _currentFilePath ?? "worksheet.twbk";
+        var directory = Path.GetDirectoryName(currentPath) ?? string.Empty;
+        var fileName = Path.GetFileNameWithoutExtension(currentPath);
+        var extension = Path.GetExtension(currentPath);
+        return Path.Combine(directory, $"{fileName}_edited{extension}");
+    }
+
+    public void SaveEditedCopy(string destinationPath)
+    {
+        if (!HasEditedChanges || _editableDocument is null)
+        {
+            return;
+        }
+
+        _editableDocument.Save(destinationPath);
+        _currentFilePath = destinationPath;
+        FileName = Path.GetFileName(destinationPath);
+        HasEditedChanges = false;
+        StatusMessage = $"Saved edited file to {destinationPath}";
+        ScheduleTransientMessageClear(statusMessage: StatusMessage, updateMessage: null);
     }
 
     public void UpdateSelectedSamples(IReadOnlyList<SampleItem> selectedSamples)
@@ -408,11 +452,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             PlotSeries = new ObservableCollection<SpectrumSeriesItem>();
             PlotPlaceholderText = "Spectrum plot will render here in the Windows UI layer.";
             OnPropertyChanged(nameof(PlotPlaceholderText));
-            RaiseCommandStates();
-            OnPropertyChanged(nameof(CanMovePrevious));
-            OnPropertyChanged(nameof(CanMoveNext));
-            OnPropertyChanged(nameof(HasSelectedReferences));
-            return;
+        RaiseCommandStates();
+        OnPropertyChanged(nameof(CanMovePrevious));
+        OnPropertyChanged(nameof(CanMoveNext));
+        OnPropertyChanged(nameof(HasSelectedReferences));
+        OnPropertyChanged(nameof(CanEditSelectedSample));
+        return;
         }
 
         foreach (var item in BuildSummaryItems(SelectedSample.Measurement))
@@ -441,6 +486,43 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(CanMoveNext));
         OnPropertyChanged(nameof(HasSelectedReferences));
         OnPropertyChanged(nameof(HasMultipleSelectedSamples));
+        OnPropertyChanged(nameof(CanEditSelectedSample));
+    }
+
+    private void LoadWorksheet(Worksheet worksheet)
+    {
+        _worksheet = worksheet;
+        Samples.Clear();
+        _selectedSamples.Clear();
+        var ordered = worksheet.Measurements
+            .Select((measurement, index) => new { Index = index, Measurement = measurement })
+            .OrderBy(item => item.Measurement.Time)
+            .ThenBy(item => item.Index)
+            .ToArray();
+
+        for (var displayOrder = 0; displayOrder < ordered.Length; displayOrder++)
+        {
+            Samples.Add(new SampleItem(ordered[displayOrder].Index, displayOrder, ordered[displayOrder].Measurement));
+        }
+
+        SelectedSample = Samples.FirstOrDefault();
+        UpdateSelectedSamples(SelectedSample is null ? Array.Empty<SampleItem>() : new[] { SelectedSample });
+        OnPropertyChanged(nameof(HasWorksheet));
+    }
+
+    private void ReloadEditedWorksheet(int preferredOriginalIndex)
+    {
+        if (_editableDocument is null)
+        {
+            return;
+        }
+
+        var worksheet = _editableDocument.Worksheet();
+        LoadWorksheet(worksheet);
+        SelectedSample = Samples.FirstOrDefault(sample => sample.Index == preferredOriginalIndex) ?? Samples.FirstOrDefault();
+        UpdateSelectedSamples(SelectedSample is null ? Array.Empty<SampleItem>() : new[] { SelectedSample });
+        StatusMessage = $"Edited worksheet has {worksheet.Measurements.Count} samples.";
+        ScheduleTransientMessageClear(statusMessage: StatusMessage, updateMessage: null);
     }
 
     private static IReadOnlyList<ReferenceSpectrum> LoadReferenceSpectra()
@@ -573,6 +655,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ((RelayCommand)ResetReferenceSelectionCommand).RaiseCanExecuteChanged();
         ((RelayCommand)PreviousCommand).RaiseCanExecuteChanged();
         ((RelayCommand)NextCommand).RaiseCanExecuteChanged();
+        OnPropertyChanged(nameof(CanEditSelectedSample));
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
