@@ -89,6 +89,27 @@ struct ViewerRootView: View {
                 .frame(maxWidth: .infinity)
                 .disabled(viewModel.worksheet == nil || viewModel.isLoading)
 
+                Menu("Edit") {
+                    Button("Rename Selected Sample") {
+                        viewModel.renameSelectedMeasurement()
+                        sampleListFocused = true
+                    }
+                    .disabled(viewModel.selectedMeasurement == nil)
+
+                    Button("Delete Selected Sample") {
+                        viewModel.deleteSelectedMeasurement()
+                        sampleListFocused = true
+                    }
+                    .disabled(viewModel.selectedMeasurement == nil)
+
+                    Divider()
+
+                    Button("Save As Edited") {
+                        viewModel.saveEditedCopy()
+                    }
+                    .disabled(viewModel.hasEditedChanges == false)
+                }
+
                 Menu {
                     Text("Current Version: \(viewModel.currentVersion)")
                     if let latestVersion = viewModel.latestVersion {
@@ -189,6 +210,16 @@ struct ViewerRootView: View {
                         let measurement = entry.1
                         Text("#\(displayIndex + 1) \(measurement.title)")
                             .tag(originalIndex)
+                            .contextMenu {
+                                Button("Rename") {
+                                    viewModel.selectMeasurement(at: originalIndex)
+                                    viewModel.renameSelectedMeasurement()
+                                }
+                                Button("Delete", role: .destructive) {
+                                    viewModel.selectMeasurement(at: originalIndex)
+                                    viewModel.deleteSelectedMeasurement()
+                                }
+                            }
                     }
                 }
                 .listStyle(.sidebar)

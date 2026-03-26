@@ -21,6 +21,8 @@ final class ViewerViewModel: ObservableObject {
     @Published var updateInfo: AppUpdateInfo?
     @Published var updateStatusMessage: String?
     @Published var latestVersion: String?
+    @Published var hasEditedChanges = false
+    private var editableDocument: TBWKEditableDocument?
     private var hasCheckedForUpdates = false
     private var transientMessageTask: Task<Void, Never>?
 
@@ -82,9 +84,12 @@ final class ViewerViewModel: ObservableObject {
         exportMessage = nil
 
         do {
-            let worksheet = try TBWKExporter.loadWorksheet(from: fileURL)
+            let editableDocument = try TBWKEditableDocument(fileURL: fileURL)
+            let worksheet = try editableDocument.loadWorksheet()
+            self.editableDocument = editableDocument
             self.worksheet = worksheet
             self.fileURL = fileURL
+            self.hasEditedChanges = false
             let firstIndex = orderedMeasurements.first?.0 ?? 0
             self.primarySelection = firstIndex
             self.selectedIndexes = worksheet.measurements.isEmpty ? [] : [firstIndex]
@@ -96,7 +101,7 @@ final class ViewerViewModel: ObservableObject {
     }
 
     func exportFiles() {
-        guard let fileURL, worksheet != nil else { return }
+        guard let fileURL, let worksheet else { return }
 
         isLoading = true
         errorMessage = nil
@@ -104,11 +109,7 @@ final class ViewerViewModel: ObservableObject {
 
         do {
             let baseFolder = try chooseExportDirectory(for: fileURL)
-            let result = try TBWKExporter.export(
-                fileURL: fileURL,
-                outputDirectory: baseFolder,
-                baseName: fileURL.deletingPathExtension().lastPathComponent
-            )
+            let result = try TBWKExporter.export(worksheet: worksheet, outputDirectory: baseFolder, baseName: fileURL.deletingPathExtension().lastPathComponent)
             exportMessage = "Exported to \(result.pdfURL.deletingLastPathComponent().path)"
             scheduleTransientMessageClear()
         } catch {
@@ -191,6 +192,60 @@ final class ViewerViewModel: ObservableObject {
         selectedReferenceIDs.removeAll()
     }
 
+    func renameSelectedMeasurement() {
+        guard let selectedMeasurement else { return }
+
+        let alert = NSAlert()
+        alert.messageText = "Rename sample"
+        alert.informativeText = "Update the selected sample name and save later as a new TBWK file."
+        alert.alertStyle = .informational
+        let textField = NSTextField(string: selectedMeasurement.title)
+        textField.frame = NSRect(x: 0, y: 0, width: 320, height: 24)
+        alert.accessoryView = textField
+        alert.addButton(withTitle: "Rename")
+        alert.addButton(withTitle: "Cancel")
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        applyRename(textField.stringValue)
+    }
+
+    func deleteSelectedMeasurement() {
+        guard let selectedMeasurement else { return }
+
+        let alert = NSAlert()
+        alert.messageText = "Delete sample?"
+        alert.informativeText = "Remove \"\(selectedMeasurement.title)\" from the edited copy. The original TBWK file will not be overwritten."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Delete")
+        alert.addButton(withTitle: "Cancel")
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        applyDelete()
+    }
+
+    func saveEditedCopy() {
+        guard hasEditedChanges, let fileURL, let editableDocument else { return }
+
+        let savePanel = NSSavePanel()
+        savePanel.canCreateDirectories = true
+        savePanel.directoryURL = fileURL.deletingLastPathComponent()
+        savePanel.nameFieldStringValue = editedFileName(for: fileURL)
+        savePanel.allowedContentTypes = []
+        savePanel.title = "Save edited TBWK file"
+
+        guard savePanel.runModal() == .OK, let destinationURL = savePanel.url else { return }
+
+        do {
+            try editableDocument.save(to: destinationURL)
+            self.fileURL = destinationURL
+            hasEditedChanges = false
+            exportMessage = "Saved edited file to \(destinationURL.path)"
+            scheduleTransientMessageClear()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func checkForUpdatesIfNeeded() {
         guard !hasCheckedForUpdates else { return }
         hasCheckedForUpdates = true
@@ -244,6 +299,57 @@ final class ViewerViewModel: ObservableObject {
 
         try FileManager.default.createDirectory(at: exportDirectory, withIntermediateDirectories: true)
         return exportDirectory
+    }
+
+    private func applyRename(_ newName: String) {
+        guard var editableDocument else { return }
+        do {
+            try editableDocument.renameMeasurement(at: primarySelection, to: newName)
+            try refreshWorksheet(using: editableDocument)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func applyDelete() {
+        guard var editableDocument else { return }
+        let deletedIndex = primarySelection
+
+        do {
+            try editableDocument.deleteMeasurement(at: deletedIndex)
+            try refreshWorksheet(using: editableDocument, deletedIndex: deletedIndex)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func refreshWorksheet(using editableDocument: TBWKEditableDocument, deletedIndex: Int? = nil) throws {
+        let worksheet = try editableDocument.loadWorksheet()
+        self.editableDocument = editableDocument
+        self.worksheet = worksheet
+        self.hasEditedChanges = true
+
+        let adjustedSelection: Int
+        if worksheet.measurements.isEmpty {
+            adjustedSelection = 0
+            selectedIndexes = []
+            primarySelection = 0
+        } else if let deletedIndex {
+            adjustedSelection = min(deletedIndex, worksheet.measurements.count - 1)
+            selectedIndexes = [adjustedSelection]
+            primarySelection = adjustedSelection
+        } else {
+            adjustedSelection = min(primarySelection, worksheet.measurements.count - 1)
+            selectedIndexes = [adjustedSelection]
+            primarySelection = adjustedSelection
+        }
+    }
+
+    private func editedFileName(for fileURL: URL) -> String {
+        let baseName = fileURL.deletingPathExtension().lastPathComponent
+        let ext = fileURL.pathExtension
+        let editedBase = baseName.hasSuffix("_edited") ? baseName : "\(baseName)_edited"
+        return ext.isEmpty ? editedBase : "\(editedBase).\(ext)"
     }
 
     private func scheduleTransientMessageClear() {

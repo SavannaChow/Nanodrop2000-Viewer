@@ -17,6 +17,7 @@ import kotlin.math.roundToInt
 
 data class ViewerUiState(
     val fileName: String? = null,
+    val fileExtension: String = "tbwk",
     val worksheet: Worksheet? = null,
     val selectedIndex: Int = 0,
     val referenceSpectra: List<ReferenceSpectrum> = emptyList(),
@@ -28,11 +29,13 @@ data class ViewerUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val exportMessage: String? = null,
+    val hasEditedChanges: Boolean = false,
 )
 
 class MainViewModel : ViewModel() {
     var uiState by mutableStateOf(ViewerUiState())
         private set
+    private var editableDocument: TbwkEditableDocument? = null
     private var hasCheckedForUpdates = false
     private var transientMessageJob: Job? = null
 
@@ -42,19 +45,25 @@ class MainViewModel : ViewModel() {
             uiState = uiState.copy(isLoading = true, errorMessage = null, exportMessage = null)
             runCatching {
                 withContext(Dispatchers.IO) {
-                    contentResolver.openInputStream(uri)?.use(TbwkParser::parse)
+                    contentResolver.openInputStream(uri)?.use { stream ->
+                        val bytes = stream.readBytes()
+                        TbwkEditableDocument.parse(bytes)
+                    }
                         ?: error("Could not open selected file.")
                 }
-            }.onSuccess { worksheet ->
+            }.onSuccess { document ->
                 val fileName = DocumentFile.fromSingleUri(context, uri)?.name
                     ?: uri.lastPathSegment
                     ?: "Selected file"
+                val worksheet = document.worksheet()
+                editableDocument = document
                 val firstSortedIndex = worksheet.measurements
                     .mapIndexed { index, measurement -> index to measurement }
                     .minWithOrNull(compareBy<Pair<Int, Measurement>> { it.second.time }.thenBy { it.first })
                     ?.first ?: 0
                 uiState = ViewerUiState(
                     fileName = fileName,
+                    fileExtension = fileName.substringAfterLast('.', "tbwk"),
                     worksheet = worksheet,
                     selectedIndex = firstSortedIndex,
                     referenceSpectra = ReferenceSpectrumLibrary.loadBundledSpectra(context),
@@ -65,8 +74,10 @@ class MainViewModel : ViewModel() {
                     isLoading = false,
                     errorMessage = null,
                     exportMessage = null,
+                    hasEditedChanges = false,
                 )
             }.onFailure { throwable ->
+                editableDocument = null
                 uiState = uiState.copy(
                     isLoading = false,
                     errorMessage = throwable.message ?: "Failed to read TBWK file.",
@@ -163,6 +174,84 @@ class MainViewModel : ViewModel() {
     fun selectedMeasurement(): Measurement? {
         val worksheet = uiState.worksheet ?: return null
         return worksheet.measurements.getOrNull(uiState.selectedIndex)
+    }
+
+    fun renameSelectedMeasurement(newName: String) {
+        val document = editableDocument ?: return
+        runCatching {
+            document.renameMeasurement(uiState.selectedIndex, newName)
+            document.worksheet()
+        }.onSuccess { worksheet ->
+            editableDocument = document
+            uiState = uiState.copy(
+                worksheet = worksheet,
+                hasEditedChanges = true,
+                errorMessage = null,
+            )
+        }.onFailure { throwable ->
+            uiState = uiState.copy(errorMessage = throwable.message ?: "Failed to rename sample.")
+        }
+    }
+
+    fun deleteSelectedMeasurement() {
+        val document = editableDocument ?: return
+        val deletedIndex = uiState.selectedIndex
+        runCatching {
+            document.deleteMeasurement(deletedIndex)
+            document.worksheet()
+        }.onSuccess { worksheet ->
+            editableDocument = document
+            val nextIndex = if (worksheet.measurements.isEmpty()) {
+                0
+            } else {
+                deletedIndex.coerceAtMost(worksheet.measurements.lastIndex)
+            }
+            uiState = uiState.copy(
+                worksheet = worksheet,
+                selectedIndex = nextIndex,
+                hasEditedChanges = true,
+                errorMessage = null,
+            )
+        }.onFailure { throwable ->
+            uiState = uiState.copy(errorMessage = throwable.message ?: "Failed to delete sample.")
+        }
+    }
+
+    fun suggestedEditedFileName(): String {
+        val fileName = uiState.fileName?.substringBeforeLast('.') ?: "tbwk_file"
+        val extension = uiState.fileExtension.ifBlank { "tbwk" }
+        val editedBase = if (fileName.endsWith("_edited")) fileName else "${fileName}_edited"
+        return "$editedBase.$extension"
+    }
+
+    fun saveEditedWorksheet(context: Context, destinationUri: Uri) {
+        val document = editableDocument ?: return
+
+        viewModelScope.launch {
+            uiState = uiState.copy(isLoading = true, errorMessage = null, exportMessage = null)
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(destinationUri)?.use { output ->
+                        output.write(document.serializedBytes())
+                    } ?: error("Could not create edited TBWK file.")
+                }
+            }.onSuccess {
+                val savedFileName = DocumentFile.fromSingleUri(context, destinationUri)?.name ?: suggestedEditedFileName()
+                uiState = uiState.copy(
+                    isLoading = false,
+                    fileName = savedFileName,
+                    fileExtension = savedFileName.substringAfterLast('.', uiState.fileExtension),
+                    exportMessage = "Saved edited file to $savedFileName",
+                    hasEditedChanges = false,
+                )
+                clearTransientMessagesLater()
+            }.onFailure { throwable ->
+                uiState = uiState.copy(
+                    isLoading = false,
+                    errorMessage = throwable.message ?: "Failed to save edited TBWK file."
+                )
+            }
+        }
     }
 
     fun selectedReferenceSpectra(): List<ReferenceSpectrum> {

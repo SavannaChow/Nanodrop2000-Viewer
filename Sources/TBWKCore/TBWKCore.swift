@@ -151,7 +151,7 @@ private enum XMLHelpers {
     }
 }
 
-private enum TBWKParser {
+enum TBWKParser {
     static func parse(fileURL: URL) throws -> Worksheet {
         try parse(data: Data(contentsOf: fileURL))
     }
@@ -480,11 +480,7 @@ public enum TBWKExporter {
         try TBWKParser.parse(fileURL: fileURL)
     }
 
-    public static func export(fileURL: URL, outputDirectory: URL? = nil, baseName: String? = nil) throws -> ExportResult {
-        let worksheet = try loadWorksheet(from: fileURL)
-        let outputDirectory = outputDirectory ?? fileURL.deletingLastPathComponent()
-        let baseName = baseName ?? fileURL.deletingPathExtension().lastPathComponent
-
+    public static func export(worksheet: Worksheet, outputDirectory: URL, baseName: String) throws -> ExportResult {
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
 
         let summaryRows = makeSummaryRows(worksheet)
@@ -499,6 +495,13 @@ public enum TBWKExporter {
         try writeSpectraPDF(for: worksheet, to: pdfURL)
 
         return ExportResult(summaryURL: summaryURL, spectrumURL: spectrumURL, pdfURL: pdfURL)
+    }
+
+    public static func export(fileURL: URL, outputDirectory: URL? = nil, baseName: String? = nil) throws -> ExportResult {
+        let worksheet = try loadWorksheet(from: fileURL)
+        let outputDirectory = outputDirectory ?? fileURL.deletingLastPathComponent()
+        let baseName = baseName ?? fileURL.deletingPathExtension().lastPathComponent
+        return try export(worksheet: worksheet, outputDirectory: outputDirectory, baseName: baseName)
     }
 
     private static func makeSummaryRows(_ worksheet: Worksheet) -> [[String: String]] {
