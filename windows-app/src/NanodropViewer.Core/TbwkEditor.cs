@@ -227,9 +227,10 @@ public sealed class TbwkEditableDocument
     private static byte[] RenameMeasurementInfo(byte[] content, string newName)
     {
         var inner = content.AsSpan(12).ToArray();
-        var first = inner.AsSpan().ReadTbwkString(0);
+        ReadOnlySpan<byte> innerSpan = inner;
+        var first = innerSpan.ReadTbwkString(0);
         var secondOffset = first.Length + 1 + 8;
-        var second = inner.AsSpan().ReadTbwkString(secondOffset);
+        var second = innerSpan.ReadTbwkString(secondOffset);
 
         return content.AsSpan(0, 12).ToArray()
             .Concat(inner.AsSpan(0, secondOffset).ToArray())
@@ -241,12 +242,13 @@ public sealed class TbwkEditableDocument
     private static byte[] RenameSpectrumMetadata(byte[] content, string newName)
     {
         var offset = 12;
-        var first = content.AsSpan().ReadTbwkString(offset);
+        ReadOnlySpan<byte> contentSpan = content;
+        var first = contentSpan.ReadTbwkString(offset);
         offset += 1 + first.Length;
-        var second = content.AsSpan().ReadTbwkString(offset);
+        var second = contentSpan.ReadTbwkString(offset);
         offset += 1 + second.Length;
         var thirdOffset = offset;
-        var third = content.AsSpan().ReadTbwkString(thirdOffset);
+        var third = contentSpan.ReadTbwkString(thirdOffset);
 
         return content.AsSpan(0, thirdOffset).ToArray()
             .Concat(TbwkString(newName))
